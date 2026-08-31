@@ -1,0 +1,10 @@
+{
+  "name": "furimakit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "フリマサイトの画面に出品日時の表示・定型文の挿入・横断検索を足す Chrome 拡張",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check src/common/log.js && node --check src/common/format.js && node --check src/common/extract.js && node --check src/common/sites.js && node --check src/common/storage.js && node --check src/content/ui.js && node --check src/content/page-data.js && node --check src/content/features/timestamps.js && node --check src/content/features/templates.js && node --check src/content/features/cross-search.js && node --check src/content/features/copy-text.js && node --check src/content/boot.js && node --check src/options/options.js && node --check src/popup/popup.js"
+  }
+}

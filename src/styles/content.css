@@ -1,0 +1,20 @@
+/*
+ * ページ本体へ挿し込む唯一の見た目（出品日時のバッジ）。
+ * サイト側の CSS を一切変えないよう、自分のクラスにだけ書く。
+ * all: initial で継承を切り、相手のフォント設定に潰されないようにする。
+ */
+.fk-badge {
+  all: initial;
+  display: inline-block;
+  margin: 2px 0 2px 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: nowrap;
+  vertical-align: middle;
+}

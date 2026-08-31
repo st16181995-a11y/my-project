@@ -3,7 +3,10 @@
   "name": "フリマキット",
   "version": "0.1.0",
   "description": "メルカリ・ラクマ・ヤフオク・PayPayフリマに、出品日時の表示／定型文の挿入／横断検索を足す補助ツール。自動化は行いません。",
-  "permissions": ["storage"],
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
   "options_ui": {
     "page": "src/options/options.html",
     "open_in_tab": true
@@ -27,13 +30,16 @@
         "src/common/sites.js",
         "src/common/storage.js",
         "src/content/ui.js",
+        "src/content/page-data.js",
         "src/content/features/timestamps.js",
         "src/content/features/templates.js",
         "src/content/features/cross-search.js",
         "src/content/features/copy-text.js",
         "src/content/boot.js"
       ],
-      "css": ["src/styles/content.css"],
+      "css": [
+        "src/styles/content.css"
+      ],
       "run_at": "document_idle"
     }
   ]

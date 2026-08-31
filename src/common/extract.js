@@ -99,6 +99,40 @@
    * 埋め込み JSON 群から出品日時・更新日時を取り出す。
    * 返り値の confidence: 'high'（ID 一致） / 'medium'（商品らしいノード） / null（取れず）
    */
+  /**
+   * 埋め込み JSON 全体から「商品 ID -> 日時」の索引を作る。
+   * 検索結果ページで、カード 1 枚ずつに出品日時を出すために使う。
+   * リンク先の ID を鍵にするので、カードの CSS クラスが変わっても壊れない。
+   */
+  function indexItems(sources) {
+    const index = new Map();
+    const list = Array.isArray(sources) ? sources : [sources];
+
+    for (const source of list) {
+      if (!source || typeof source !== 'object') continue;
+      walk(source, (obj) => {
+        const id = firstKey(obj, ID_KEYS);
+        if (id === undefined) return false;
+        const created = firstKey(obj, CREATED_KEYS);
+        if (created === undefined) return false;
+
+        // 商品らしさを必須にする。{id, created} だけを持つ設定値や
+        // 計測用のノードを商品と誤認すると、無関係な日時が出る。
+        if (!looksLikeItem(obj)) return false;
+
+        const key = String(id);
+        const updated = firstKey(obj, UPDATED_KEYS) ?? null;
+        const previous = index.get(key);
+        // 同じ ID が複数箇所にあるときは、情報量の多いほうを採る
+        if (!previous || (previous.updated === null && updated !== null)) {
+          index.set(key, { created, updated });
+        }
+        return false; // 全部集めるので打ち切らない
+      });
+    }
+    return index;
+  }
+
   function timestampsFrom(sources, itemId, { allowFallback = !itemId } = {}) {
     const list = Array.isArray(sources) ? sources : [sources];
 
@@ -197,6 +231,7 @@
 
   FA.extract = {
     walk,
+    indexItems,
     findItemNode,
     findAnyItemNode,
     timestampsFrom,

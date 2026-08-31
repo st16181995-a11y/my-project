@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>フリマキット 設定</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <h1>フリマキット 設定</h1>
+    <p class="lead">メルカリ・ラクマ・ヤフオク・PayPayフリマの画面に、出品日時の表示と定型文の入力を足します。出品や値下げを自動で行う機能はありません。</p>
+
+    <section>
+      <h2>使う機能</h2>
+      <p class="desc">不要なものは切っておくと、その分だけページに触れなくなります。</p>
+      <div id="features"></div>
+    </section>
+
+    <section>
+      <h2>定型文</h2>
+      <p class="desc">
+        本文に <code>{商品名}</code> <code>{価格}</code> <code>{日付}</code> <code>{出品日}</code> と書くと、開いている商品の値に置き換わります。
+        値が取れなかった場合は書いたまま残るので、消えたことに気づかず送信する事故は起きません。
+      </p>
+      <div id="templates"></div>
+      <div class="actions">
+        <button type="button" id="add-template">定型文を追加</button>
+        <button type="button" id="restore-templates" class="small">初期の定型文に戻す</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>横断検索に出すサイト</h2>
+      <p class="desc">すべて外すと、代わりに全サイトを表示します。</p>
+      <div class="grid" id="targets"></div>
+    </section>
+
+    <section>
+      <h2>表示</h2>
+      <div id="display"></div>
+    </section>
+
+    <section>
+      <h2>うまく表示されないとき</h2>
+      <p class="desc">
+        フリマ各社は画面の作りをよく変えるため、日時が取れなくなることがあります。
+        対象サイトを開いた状態でツールバーのアイコンを押すと、どの機能が動いていて
+        どれが失敗したかを確認できます。原因が分からないまま「エラー」とだけ出ることはありません。
+      </p>
+    </section>
+
+    <section>
+      <h2>設定の書き出し・読み込み</h2>
+      <p class="desc">定型文ごと JSON で持ち出せます。別の端末へ移すときに使ってください。</p>
+      <div class="actions">
+        <button type="button" id="export">書き出す</button>
+        <button type="button" id="import">読み込む</button>
+        <input type="file" id="import-file" accept="application/json" hidden>
+      </div>
+    </section>
+  </main>
+
+  <div class="bar">
+    <div class="bar-inner">
+      <button type="button" id="save" class="primary">保存する</button>
+      <span class="status" id="status"></span>
+    </div>
+  </div>
+
+  <script src="../common/log.js"></script>
+  <script src="../common/format.js"></script>
+  <script src="../common/extract.js"></script>
+  <script src="../common/sites.js"></script>
+  <script src="../common/storage.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
