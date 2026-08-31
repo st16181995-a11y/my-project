@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "フリマキット",
+  "version": "0.1.0",
+  "description": "メルカリ・ラクマ・ヤフオク・PayPayフリマに、出品日時の表示／定型文の挿入／横断検索を足す補助ツール。自動化は行いません。",
+  "permissions": ["storage"],
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_title": "フリマキット",
+    "default_popup": "src/popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://jp.mercari.com/*",
+        "https://fril.jp/*",
+        "https://auctions.yahoo.co.jp/*",
+        "https://paypayfleamarket.yahoo.co.jp/*"
+      ],
+      "js": [
+        "src/common/log.js",
+        "src/common/format.js",
+        "src/common/extract.js",
+        "src/common/sites.js",
+        "src/common/storage.js",
+        "src/content/ui.js",
+        "src/content/features/timestamps.js",
+        "src/content/features/templates.js",
+        "src/content/features/cross-search.js",
+        "src/content/features/copy-text.js",
+        "src/content/boot.js"
+      ],
+      "css": ["src/styles/content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
