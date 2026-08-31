@@ -166,6 +166,7 @@
     panelEl.style[side] = '0';
     panelEl.style[side === 'right' ? 'left' : 'right'] = 'auto';
     toastEl.style[side] = '24px';
+    toastEl.style[side === 'right' ? 'left' : 'right'] = 'auto';
   }
 
   function togglePanel(force) {

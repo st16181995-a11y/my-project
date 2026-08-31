@@ -33,13 +33,22 @@
   function refreshCards() {
     if (!settings || !settings.features.timestamps) return;
     const feature = FA.features && FA.features.timestamps;
-    if (feature) log.safe('timestamps', () => feature.annotateCards(site, settings), 0);
+    if (!feature) return;
+
+    // 商品データが後から届くことがあるので、増えていたら取りこぼしへ再挑戦する
+    if (log.safe('page-data', () => FA.pageData.maybeRefresh(), false)) {
+      log.safe('timestamps', () => feature.retryMisses(site, settings));
+    }
+    log.safe('timestamps', () => feature.annotateCards(site, settings), 0);
   }
 
   function tick() {
     if (location.href !== lastUrl) {
       lastUrl = location.href;
       log.debug(SCOPE, `画面遷移: ${lastUrl}`);
+      // 前の商品のバッジを残したまま作り直すと、古い日時が居座る
+      const timestamps = FA.features && FA.features.timestamps;
+      if (timestamps) log.safe('timestamps', () => timestamps.clear());
       FA.pageData.reset();
       renderAll();
       return;

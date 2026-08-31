@@ -13,6 +13,9 @@
   const MAX_INLINE_SCRIPTS = 12;
 
   let cache = null;
+  let scriptCount = 0;
+  let refreshCount = 0;
+  const MAX_REFRESH = 8; // 際限なく作り直さないための上限
 
   function collectSources() {
     const sources = [];
@@ -58,17 +61,49 @@
       }
     }
 
+    scriptCount = document.querySelectorAll('script').length;
     log.debug(SCOPE, `埋め込みデータ ${sources.length} 件 / 商品索引 ${index.size} 件 / 商品ノード ${itemNode ? 'あり' : 'なし'}`);
     return { url: location.href, site, itemId, sources, index, itemNode };
   }
 
   function get() {
-    if (!cache || cache.url !== location.href) cache = build();
+    if (!cache || cache.url !== location.href) {
+      refreshCount = 0;
+      cache = build();
+    }
     return cache;
+  }
+
+  /**
+   * データが後から届く場合に読み直す。
+   *
+   * 対象サイトは本文を分割して流し込むため、読み込み直後の 1 回だけ見ても
+   * 商品データが揃っていないことがある。「たまに表示されない」の実態はこれ。
+   * script タグが増えていたら集め直し、拾えるようになったかを呼び出し側へ返す。
+   */
+  function maybeRefresh() {
+    if (!cache || cache.url !== location.href) {
+      get();
+      return true;
+    }
+    if (refreshCount >= MAX_REFRESH) return false;
+    if (document.querySelectorAll('script').length === scriptCount) return false;
+
+    refreshCount++;
+    const before = cache.index.size;
+    const hadItemNode = !!cache.itemNode;
+    cache = build();
+
+    // 「商品が増えた」か「商品ノードを新たに拾えた」ときだけ再挑戦させる。
+    // 変化が無いのに毎回やり直すと、無駄に DOM を触り続けることになる。
+    const grew = cache.index.size > before || (!hadItemNode && !!cache.itemNode);
+    log.debug(SCOPE, `埋め込みデータを読み直しました（${refreshCount}回目、索引 ${before} → ${cache.index.size}）`);
+    return grew;
   }
 
   function reset() {
     cache = null;
+    refreshCount = 0;
   }
 
   /** 見出しから商品名を取る。h1 はクラス名よりずっと変わりにくい。 */
@@ -105,5 +140,5 @@
     };
   }
 
-  FA.pageData = { get, reset, collectSources, itemName, itemPrice, context };
+  FA.pageData = { get, reset, maybeRefresh, collectSources, itemName, itemPrice, context };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

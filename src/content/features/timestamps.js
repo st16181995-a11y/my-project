@@ -13,7 +13,8 @@
 
   const SCOPE = 'timestamps';
   const BADGE_CLASS = 'fk-badge';
-  const MARK = 'fkTs'; // dataset フラグ。二重挿入よけ
+  const MARK = 'fkTs'; // 日時を付け終えた印
+  const MISS = 'fkTsMiss'; // 日時が取れなかった印。データが後から届いたら再挑戦する
 
   function badge(created, updated, showRelative) {
     const createdText = format.absolute(created);
@@ -46,7 +47,10 @@
     }
 
     const heading = document.querySelector('main h1') || document.querySelector('h1');
-    if (heading && !heading.parentNode.querySelector(`.${BADGE_CLASS}`)) {
+    if (heading) {
+      // 以前の商品のバッジが残っていることがある（サイト側が入れ物を再利用するため）。
+      // 消してから貼り直さないと、前の商品の日時を表示し続けてしまう。
+      for (const stale of heading.parentNode.querySelectorAll(`.${BADGE_CLASS}`)) stale.remove();
       const node = badge(found.created, found.updated, settings.showRelative);
       if (node) heading.parentNode.insertBefore(node, heading.nextSibling);
     }
@@ -67,25 +71,45 @@
     let added = 0;
 
     for (const anchor of anchors) {
-      if (anchor.dataset[MARK]) continue;
+      if (anchor.dataset[MISS]) continue;
+
+      if (anchor.dataset[MARK]) {
+        const next = anchor.nextSibling;
+        const stillThere = next && next.classList && next.classList.contains(BADGE_CLASS);
+        if (stillThere) continue;
+        // サイト側の再描画で消されていた。印を外して貼り直す。
+        delete anchor.dataset[MARK];
+      }
 
       let itemId = null;
       try {
         itemId = sites.itemIdOf(new URL(anchor.href, location.href), site);
       } catch (_err) {
+        anchor.dataset[MISS] = '1';
         continue;
       }
-      if (!itemId) continue;
+      if (!itemId) {
+        anchor.dataset[MISS] = '1'; // 商品リンクではない。毎回 URL を解析し直さない。
+        continue;
+      }
 
       const entry = index.get(itemId);
-      anchor.dataset[MARK] = '1'; // 日時が無くても再走査しない
-      if (!entry) continue;
+      if (!entry) {
+        // まだデータが届いていないだけかもしれないので、諦めた印だけ付ける
+        anchor.dataset[MISS] = '1';
+        continue;
+      }
 
       const node = badge(entry.created, entry.updated, settings.showRelative);
-      if (!node) continue;
+      if (!node) {
+        anchor.dataset[MISS] = '1';
+        continue;
+      }
+      anchor.dataset[MARK] = '1';
+      delete anchor.dataset[MISS];
 
-      // カードの中ではなく隣に置く。サイト側の再描画で消えても
-      // 監視で貼り直すため、消えっぱなしにはならない。
+      // カードの中ではなく隣に置く。React が管理する子要素の並びに
+      // 割り込むと、サイト側の再描画で例外を起こすことがあるため。
       const parent = anchor.parentNode;
       if (!parent) continue;
       parent.insertBefore(node, anchor.nextSibling);
@@ -94,6 +118,21 @@
 
     if (added) log.debug(SCOPE, `一覧に ${added} 件の日時を追加`);
     return added;
+  }
+
+  /** 画面遷移時に、前の商品の表示を残さない。 */
+  function clear() {
+    for (const node of document.querySelectorAll(`.${BADGE_CLASS}`)) node.remove();
+    for (const element of document.querySelectorAll('[data-fk-ts], [data-fk-ts-miss]')) {
+      delete element.dataset[MARK];
+      delete element.dataset[MISS];
+    }
+  }
+
+  /** 埋め込みデータが増えたときに、取れなかったぶんへ再挑戦する。 */
+  function retryMisses(site, settings) {
+    for (const element of document.querySelectorAll('[data-fk-ts-miss]')) delete element.dataset[MISS];
+    annotateItemPage(site, settings);
   }
 
   function renderPanel(state) {
@@ -146,5 +185,5 @@
   }
 
   FA.features = FA.features || {};
-  FA.features.timestamps = { run, badge, annotateCards };
+  FA.features.timestamps = { run, badge, annotateCards, clear, retryMisses };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
