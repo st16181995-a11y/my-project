@@ -91,3 +91,43 @@ test('自動操作につながる権限を要求していない', () => {
   }
   assert.ok(!manifest.background, '常駐処理は持たない');
 });
+
+/**
+ * 権限を絞っていても、ページ内で人の代わりにボタンを押せてしまえば同じこと。
+ * 「送信するのは常に人」という約束を、README ではなくコードの側で留める。
+ * 入力欄へ文字を入れる Event（ui.insertText）は対象外。あれは押していない。
+ */
+test('コンテンツスクリプトが、人の代わりに押したり送ったりしていない', () => {
+  const banned = [
+    [/\.click\s*\(/, '要素のクリック'],
+    [/\.submit\s*\(/, 'フォームの送信'],
+    [/requestSubmit/, 'フォームの送信'],
+    [/new\s+(Mouse|Pointer)Event/, 'クリックの偽装'],
+    [/XMLHttpRequest|\bfetch\s*\(/, 'サイトへの直接リクエスト'],
+  ];
+
+  for (const file of manifest.content_scripts[0].js) {
+    const source = read(file);
+    for (const [pattern, why] of banned) {
+      assert.ok(!pattern.test(source), `${file} に${why}がある。送信は人が行う約束を崩している`);
+    }
+  }
+});
+
+test('出張セールの定型文が、指定どおりの本文で入っている', () => {
+  const storage = require('../src/common/storage.js');
+  const template = storage.DEFAULT_TEMPLATES.find((t) => t.id === 't_trip_sale');
+  assert.ok(template, '出張セールの定型文がない');
+  assert.strictEqual(
+    template.body,
+    '🚨【出張期間限定・大幅値下げ】🚨\n'
+      + '\n'
+      + '出張のため、しばらく即日発送ができません✈️\n'
+      + 'その代わりに、期間限定で一気にお値下げいたします🔥\n'
+      + '\n'
+      + '📦 次回の発送は【9月21日（月）】となります！\n'
+      + '\n'
+      + '発送までお待ちいただける方は、\n'
+      + 'ぜひこの機会にお得にご購入ください✨'
+  );
+});

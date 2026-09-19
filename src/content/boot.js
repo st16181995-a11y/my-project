@@ -10,7 +10,7 @@
   const { log, sites, storage, ui } = FA;
 
   const SCOPE = 'boot';
-  const FEATURE_ORDER = ['timestamps', 'templates', 'crossSearch', 'copyText'];
+  const FEATURE_ORDER = ['timestamps', 'reactions', 'templates', 'crossSearch', 'copyText'];
   const MUTATION_DEBOUNCE_MS = 400;
   const POLL_MS = 1200;
 
@@ -31,24 +31,38 @@
 
   /** 画面が書き換わっただけのとき。パネルは作り直さない（入力中の値が消えるため）。 */
   function refreshCards() {
-    if (!settings || !settings.features.timestamps) return;
-    const feature = FA.features && FA.features.timestamps;
-    if (!feature) return;
+    if (!settings) return;
+
+    const active = [];
+    for (const name of FEATURE_ORDER) {
+      const feature = FA.features && FA.features[name];
+      if (feature && typeof feature.annotateCards === 'function' && settings.features[name]) {
+        active.push({ name, feature });
+      }
+    }
+    // 一覧に書き込む機能が全部切られているなら、ページを読み直す理由がない
+    if (active.length === 0) return;
 
     // 商品データが後から届くことがあるので、増えていたら取りこぼしへ再挑戦する
-    if (log.safe('page-data', () => FA.pageData.maybeRefresh(), false)) {
-      log.safe('timestamps', () => feature.retryMisses(site, settings));
+    const grew = log.safe('page-data', () => FA.pageData.maybeRefresh(), false);
+
+    for (const { name, feature } of active) {
+      if (grew && typeof feature.retryMisses === 'function') {
+        log.safe(name, () => feature.retryMisses(site, settings));
+      }
+      log.safe(name, () => feature.annotateCards(site, settings), 0);
     }
-    log.safe('timestamps', () => feature.annotateCards(site, settings), 0);
   }
 
   function tick() {
     if (location.href !== lastUrl) {
       lastUrl = location.href;
       log.debug(SCOPE, `画面遷移: ${lastUrl}`);
-      // 前の商品のバッジを残したまま作り直すと、古い日時が居座る
-      const timestamps = FA.features && FA.features.timestamps;
-      if (timestamps) log.safe('timestamps', () => timestamps.clear());
+      // 前の商品のバッジを残したまま作り直すと、古い日時や反応数が居座る
+      for (const name of FEATURE_ORDER) {
+        const feature = FA.features && FA.features[name];
+        if (feature && typeof feature.clear === 'function') log.safe(name, () => feature.clear());
+      }
       FA.pageData.reset();
       renderAll();
       return;

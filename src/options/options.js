@@ -8,6 +8,7 @@
   const { storage, sites } = globalThis.FA;
 
   const featuresEl = document.getElementById('features');
+  const limitsEl = document.getElementById('limits');
   const templatesEl = document.getElementById('templates');
   const targetsEl = document.getElementById('targets');
   const displayEl = document.getElementById('display');
@@ -15,6 +16,7 @@
 
   const FEATURE_LABELS = {
     timestamps: ['出品日時を表示', '商品ページと検索結果に、正確な出品日時と経過日数を出します。'],
+    reactions: ['反応数と再出品候補', 'いいね数・コメント数を表示し、下のしきい値に当てはまる商品をパネルに一覧します。'],
     templates: ['定型文を挿入', '画面端のパネルから、選んだ入力欄へ定型文を差し込みます。'],
     crossSearch: ['他サイトで探す', '同じ言葉で他サイトの検索を開くボタンを出します。売り切れ検索も含みます。'],
     copyText: ['商品情報をコピー', '商品名・説明文・URL をひと押しでコピーします。'],
@@ -140,6 +142,39 @@
     }
   }
 
+  /** 再出品の目安。0 も有効な指定（反応ゼロだけを拾う）なので弾かない。 */
+  function renderLimits() {
+    limitsEl.innerHTML = '';
+
+    const addField = (key, label, description) => {
+      const wrapper = document.createElement('label');
+      wrapper.className = 'check';
+
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.step = '1';
+      input.value = String(state.reactionLimits[key]);
+      input.style.maxWidth = '80px';
+      input.addEventListener('input', () => {
+        const value = Number(input.value);
+        if (Number.isFinite(value) && value >= 0) state.reactionLimits[key] = Math.floor(value);
+      });
+
+      const body = document.createElement('span');
+      body.className = 'body';
+      body.appendChild(Object.assign(document.createElement('span'), { textContent: label }));
+      body.appendChild(Object.assign(document.createElement('small'), { textContent: description }));
+
+      wrapper.appendChild(input);
+      wrapper.appendChild(body);
+      limitsEl.appendChild(wrapper);
+    };
+
+    addField('likes', 'いいね数の上限', 'この数以下を「反応が薄い」として扱います。');
+    addField('comments', 'コメント数の上限', 'この数以下を「反応が薄い」として扱います。');
+  }
+
   function renderDisplay() {
     displayEl.innerHTML = '';
     displayEl.appendChild(
@@ -156,6 +191,7 @@
 
   function renderAll() {
     renderFeatures();
+    renderLimits();
     renderTemplates();
     renderTargets();
     renderDisplay();

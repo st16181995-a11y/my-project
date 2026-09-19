@@ -44,6 +44,11 @@
   const ID_KEYS = ['id', 'itemId', 'item_id', 'auctionId', 'auction_id', 'code'];
   const CREATED_KEYS = ['created', 'createdAt', 'created_at', 'createTime', 'startTime', 'start_time'];
   const UPDATED_KEYS = ['updated', 'updatedAt', 'updated_at', 'updateTime', 'modified'];
+  const LIKE_KEYS = [
+    'numLikes', 'num_likes', 'likeCount', 'like_count',
+    'favoriteCount', 'favorite_count', 'watchListNum', 'watchlist_num', 'likes',
+  ];
+  const COMMENT_KEYS = ['numComments', 'num_comments', 'commentCount', 'comment_count', 'comments'];
 
   function firstKey(obj, keys) {
     for (const key of keys) {
@@ -53,6 +58,41 @@
       }
     }
     return undefined;
+  }
+
+  /**
+   * 件数を数に正規化する。
+   *
+   * 各社で型がばらつく（数・文字列・コメント配列そのもの）ので、ここで吸収する。
+   * 0 は「反応が無い」という意味のある値なので、絶対に falsy として捨てない。
+   * これを取り違えると「いいね0の商品」が一件も出てこなくなる。
+   */
+  function countOf(value) {
+    if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? Math.floor(value) : null;
+    if (Array.isArray(value)) return value.length;
+    if (typeof value === 'string') {
+      const trimmed = value.replace(/[,\s]/g, '');
+      if (!/^\d+$/.test(trimmed)) return null;
+      return Number(trimmed);
+    }
+    // { total: 3 } のような入れ子。1 段だけ覗く（深追いすると無関係な数を拾う）
+    if (value && typeof value === 'object') {
+      for (const key of ['count', 'total', 'num', 'length']) {
+        if (typeof value[key] === 'number' && Number.isFinite(value[key]) && value[key] >= 0) {
+          return Math.floor(value[key]);
+        }
+      }
+    }
+    return null;
+  }
+
+  /** 商品ノードから いいね数・コメント数 を取り出す。取れなければ null。 */
+  function reactionsOf(node) {
+    if (!node || typeof node !== 'object') return { likes: null, comments: null };
+    return {
+      likes: countOf(firstKey(node, LIKE_KEYS)),
+      comments: countOf(firstKey(node, COMMENT_KEYS)),
+    };
   }
 
   function looksLikeItem(obj) {
@@ -121,11 +161,26 @@
         if (!looksLikeItem(obj)) return false;
 
         const key = String(id);
-        const updated = firstKey(obj, UPDATED_KEYS) ?? null;
+        const reactions = reactionsOf(obj);
+        const entry = {
+          created,
+          updated: firstKey(obj, UPDATED_KEYS) ?? null,
+          likes: reactions.likes,
+          comments: reactions.comments,
+          name: typeof obj.name === 'string' ? obj.name : typeof obj.title === 'string' ? obj.title : null,
+        };
+
         const previous = index.get(key);
-        // 同じ ID が複数箇所にあるときは、情報量の多いほうを採る
-        if (!previous || (previous.updated === null && updated !== null)) {
-          index.set(key, { created, updated });
+        if (!previous) {
+          index.set(key, entry);
+          return false;
+        }
+
+        // 同じ ID が複数箇所に分かれて置かれていることがある
+        // （一覧用の軽いノードと、詳細用のノード）。上書きすると
+        // 片方にしか無い項目が消えるので、欠けているところだけ埋める。
+        for (const field of ['updated', 'likes', 'comments', 'name']) {
+          if (previous[field] === null && entry[field] !== null) previous[field] = entry[field];
         }
         return false; // 全部集めるので打ち切らない
       });
@@ -235,9 +290,11 @@
     findItemNode,
     findAnyItemNode,
     timestampsFrom,
+    countOf,
+    reactionsOf,
     jsonObjectsIn,
     matchingBrace,
-    _keys: { ID_KEYS, CREATED_KEYS, UPDATED_KEYS },
+    _keys: { ID_KEYS, CREATED_KEYS, UPDATED_KEYS, LIKE_KEYS, COMMENT_KEYS },
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = FA.extract;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

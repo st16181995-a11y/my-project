@@ -43,7 +43,13 @@ test('索引は商品らしいノードだけを拾い、囮に釣られない',
   };
   const index = extract.indexItems(page);
   assert.strictEqual(index.size, 2);
-  assert.deepStrictEqual(index.get('m1'), { created: 1700000000, updated: 1700100000 });
+  assert.deepStrictEqual(index.get('m1'), {
+    created: 1700000000,
+    updated: 1700100000,
+    likes: null,
+    comments: null,
+    name: 'A',
+  });
   assert.strictEqual(index.get('m3'), undefined);
 });
 

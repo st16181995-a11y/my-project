@@ -88,6 +88,18 @@
 
     .cat { margin: 0 0 4px; font-size: 11px; color: #374151; font-weight: 700; }
 
+    .tpl-link {
+      display: block; padding: 8px 10px; margin-bottom: 6px;
+      border: 1px solid #d1d5db; border-radius: 6px; background: #fff;
+      font-size: 12px; color: #111827; text-decoration: none; overflow: hidden;
+    }
+    .tpl-link:hover { background: #fffbeb; border-color: #f59e0b; }
+    .tpl-link .name {
+      display: block; font-weight: 600; margin-bottom: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tpl-link .preview { display: block; color: #6b7280; font-size: 11px; }
+
     .kv { margin: 0; font-size: 12px; line-height: 1.8; }
     .kv div { display: flex; justify-content: space-between; gap: 8px; }
     .kv dt { color: #6b7280; }

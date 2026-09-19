@@ -1,5 +1,5 @@
 /*
- * ページ本体へ挿し込む唯一の見た目（出品日時のバッジ）。
+ * ページ本体へ挿し込む見た目（出品日時のバッジと、反応数のバッジ）。
  * サイト側の CSS を一切変えないよう、自分のクラスにだけ書く。
  * all: initial で継承を切り、相手のフォント設定に潰されないようにする。
  */
@@ -17,4 +17,32 @@
   line-height: 1.6;
   white-space: nowrap;
   vertical-align: middle;
+}
+
+/* 反応数。日時のバッジと並ぶので、色を分けて見分けられるようにする。 */
+.fk-react {
+  all: initial;
+  display: inline-block;
+  margin: 2px 0 2px 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/*
+ * 再出品の候補。色だけで伝えると色覚特性や白黒表示で消えるため、
+ * バッジの文言にも「（低反応）」と書いてある。ここは補助。
+ */
+.fk-react--low {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+  font-weight: 700;
 }

@@ -57,6 +57,43 @@ test('本文でない値を渡しても落ちない', () => {
   }
 });
 
+test('版が上がったとき、書き溜めた定型文を残したまま新しい既定文だけを足す', () => {
+  const mine = { id: 'mine', category: 'コメント', label: '自作', body: '自分で書いた文' };
+  const result = storage.normalize({ version: 1, templates: [mine] });
+  const ids = result.templates.map((t) => t.id);
+
+  assert.ok(ids.includes('mine'), '書き溜めた定型文が消えている');
+  assert.ok(ids.includes('t_trip_sale'), '新しい既定の定型文が届いていない');
+  assert.strictEqual(result.templates[0].id, 'mine', '既存のものを押しのけていない');
+});
+
+test('同じ版なら二重に足さない', () => {
+  const once = storage.normalize({ version: 1, templates: [{ id: 'mine', body: 'x' }] });
+  const twice = storage.normalize(Object.assign({}, once, { version: storage.SCHEMA_VERSION }));
+  assert.strictEqual(twice.templates.length, once.templates.length);
+});
+
+test('定型文を全部消している人には、版が上がっても足さない', () => {
+  assert.deepStrictEqual(storage.normalize({ version: 1, templates: [] }).templates, []);
+});
+
+test('版の分からない設定を、古い版と決めつけない', () => {
+  const result = storage.normalize({ templates: [{ body: '本文だけ' }] });
+  assert.strictEqual(result.templates.length, 1);
+});
+
+test('再出品の目安は 0 を受け入れ、壊れた値だけ既定へ戻す', () => {
+  assert.deepStrictEqual(
+    storage.normalize({ reactionLimits: { likes: 0, comments: 5 } }).reactionLimits,
+    { likes: 0, comments: 5 }
+  );
+  assert.deepStrictEqual(
+    storage.normalize({ reactionLimits: { likes: -3, comments: 'いっぱい' } }).reactionLimits,
+    { likes: 1, comments: 1 }
+  );
+  assert.deepStrictEqual(storage.normalize({ reactionLimits: 'こわれている' }).reactionLimits, { likes: 1, comments: 1 });
+});
+
 test('chrome が無い環境では保存が記憶に退避する', async () => {
   const saved = await storage.save({ panelSide: 'left', features: { timestamps: false } });
   assert.strictEqual(saved.panelSide, 'left');

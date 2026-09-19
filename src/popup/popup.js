@@ -12,6 +12,7 @@
   const STATUS_LABEL = { ok: '動作中', skip: '対象外', error: '失敗' };
   const FEATURE_LABEL = {
     timestamps: '出品日時の表示',
+    reactions: '反応数と再出品候補',
     templates: '定型文の挿入',
     crossSearch: '他サイトで探す',
     copyText: '情報のコピー',
