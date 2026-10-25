@@ -1,0 +1,222 @@
+<title>朝の脅威監視</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@600&display=swap">
+<style>
+/* layout: 朝いちばんに開く1枚の報告書。上から「結論 → 件数 → 要確認の案件 → 到達範囲」 */
+:root{
+  --bg:#f2f4f6; --surface:#ffffff; --surface2:#e9edf1; --line:#d5dce3;
+  --fg:#15202b; --muted:#566574; --accent:#0b6a8a; --accent-fg:#fff;
+  --hi:#b3261e; --hi-bg:#fbe7e5; --mid:#86520a; --mid-bg:#faeed6; --lo:#2c6a4d; --lo-bg:#e2f0e8; --ok:#2c6a4d;
+  --sans:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --serif:"Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e151b; --surface:#16202a; --surface2:#1d2a36; --line:#2b3a47;
+    --fg:#e6edf2; --muted:#9aabb8; --accent:#4cb4d6; --accent-fg:#06222d;
+    --hi:#ff8d84; --hi-bg:#3a1c1a; --mid:#f0b45a; --mid-bg:#33260f; --lo:#7fd1a3; --lo-bg:#142a1f; --ok:#7fd1a3; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e151b; --surface:#16202a; --surface2:#1d2a36; --line:#2b3a47;
+  --fg:#e6edf2; --muted:#9aabb8; --accent:#4cb4d6; --accent-fg:#06222d;
+  --hi:#ff8d84; --hi-bg:#3a1c1a; --mid:#f0b45a; --mid-bg:#33260f; --lo:#7fd1a3; --lo-bg:#142a1f; --ok:#7fd1a3; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.65;
+  padding-block:0 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:720px;margin:0 auto}
+header{padding:18px 0 12px}
+.date{font-size:13px;color:var(--muted)}
+h1{font-family:var(--serif);font-size:24px;line-height:1.3;margin:2px 0 0;font-weight:600;text-wrap:balance}
+h2{font-size:15px;margin:22px 0 8px;font-weight:700;display:flex;gap:8px;align-items:baseline}
+h2 .n{font-weight:500;color:var(--muted);font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 10px}
+.hero{border-radius:14px;padding:16px;margin:4px 0 12px}
+.hero.ok{background:var(--lo-bg);color:var(--fg)}
+.hero.hi{background:var(--hi-bg)}
+.hero.mid{background:var(--mid-bg)}
+.hero .big{font-family:var(--serif);font-size:20px;line-height:1.45;font-weight:600;margin:0 0 6px;text-wrap:balance}
+.hero.hi .big{color:var(--hi)} .hero.mid .big{color:var(--mid)} .hero.ok .big{color:var(--ok)}
+.hero p{margin:0;font-size:13.5px}
+.stale{background:var(--mid-bg);color:var(--fg);border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:13.5px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 6px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 6px;text-align:center}
+.stat b{display:block;font-size:22px;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat span{font-size:11.5px;color:var(--muted)}
+.stat.hi b{color:var(--hi)} .stat.mid b{color:var(--mid)} .stat.lo b{color:var(--lo)}
+.cov{font-size:12.5px;color:var(--muted);margin:0 0 6px}
+.pill{display:inline-block;border-radius:6px;padding:0 9px;font-weight:700;font-size:14px}
+.pill.hi{background:var(--hi-bg);color:var(--hi)} .pill.mid{background:var(--mid-bg);color:var(--mid)} .pill.lo{background:var(--lo-bg);color:var(--lo)}
+.chip{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 9px;font-size:12px;color:var(--muted);background:var(--surface)}
+.chip.ind{background:var(--surface2);color:var(--fg);border-color:transparent}
+.chip.urgent{background:var(--hi-bg);color:var(--hi);border-color:transparent;font-weight:700}
+.chip.new{background:var(--mid-bg);color:var(--mid);border-color:transparent}
+.chip.sel{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;color:var(--muted)}
+.quote{margin:8px 0;padding:8px 10px;background:var(--surface2);border-radius:8px;font-size:14px;word-break:break-word;white-space:pre-wrap}
+.why{font-size:13.5px;margin:6px 0}
+.diff{font-size:13px;color:var(--mid);margin:4px 0}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--accent);border-radius:8px;padding:6px 12px;font:inherit;font-size:13px;font-weight:700;text-decoration:none;min-height:36px;display:inline-flex;align-items:center;cursor:pointer}
+.btn:focus-visible,.chip:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.chip{font:inherit;font-size:12.5px;min-height:32px;cursor:pointer;padding:0 11px}
+.days{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px}
+.days button{flex:none}
+ul.plain{margin:0;padding-left:20px;font-size:13.5px} ul.plain li{margin:2px 0}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px}
+.cols .card{margin:0}
+.cols h3{font-size:13px;margin:0 0 6px;color:var(--muted);font-weight:700}
+.empty{color:var(--muted);text-align:center;padding:36px 8px}
+.alert{border:1px solid var(--hi);background:var(--hi-bg);color:var(--fg);border-radius:10px;padding:10px 12px;font-size:13.5px;margin:18px 0 0}
+.alert b{color:var(--hi)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px}
+@media (prefers-reduced-motion:no-preference){.toast{animation:f .15s ease-out}@keyframes f{from{opacity:0}to{opacity:1}}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="date" id="dDate">&nbsp;</div>
+    <h1 id="dTitle">朝の脅威監視</h1>
+  </header>
+
+  <div id="stale" class="stale" hidden></div>
+  <div id="days" class="days" hidden></div>
+  <div id="body"><p class="empty">読み込み中…</p></div>
+
+  <div class="alert"><b>具体的な標的・日時・場所・手段がそろう投稿</b>を見つけたら、評価を待たずに警察へ。本人には接触しないでください。緊急 <b>110</b> ／ 相談 <b>#9110</b></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)};
+function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+var LV={'高':'hi','中':'mid','低':'lo'};
+var reports=[],selDate=null,dbOK=true;
+
+function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(function(){t.hidden=true},1600)}
+function copy(text){
+  try{navigator.clipboard.writeText(text).then(function(){toast('コピーしました')},function(){prompt0(text)})}catch(e){prompt0(text)}
+}
+function prompt0(text){
+  var ta=el('textarea');ta.value=text;ta.style.cssText='position:fixed;inset:20% 8% auto;width:84%;height:40%;z-index:9';document.body.appendChild(ta);ta.select();
+  ta.onblur=function(){ta.remove()};toast('全選択してコピーしてください');
+}
+function jstToday(){var d=new Date(Date.now()+9*3600*1000);return d.toISOString().slice(0,10)}
+function safeUrl(u){return /^https?:\/\//.test(String(u||''))?u:null}
+function num(n){return typeof n==='number'?n.toLocaleString('ja-JP'):'—'}
+
+function section(title,items,parent){
+  if(!items.length)return;
+  var h=el('h2',null,title);h.appendChild(el('span','n',items.length+'件'));parent.appendChild(h);
+  items.forEach(function(it){parent.appendChild(card(it))});
+}
+function card(it){
+  var c=el('div','card');
+  var m=el('div','meta');
+  var lv=el('span','pill '+(LV[it.level]||'lo'),it.level||'低');m.appendChild(lv);
+  m.appendChild(el('span','chip','確度'+(it.grade||'D')));
+  if(it.status)m.appendChild(el('span','chip'+(it.status==='新規'?' new':''),it.status));
+  if(it.urgent)m.appendChild(el('span','chip urgent','緊急確認推奨'));
+  m.appendChild(el('span',null,[it.platform,it.time].filter(Boolean).join(' ・ ')));
+  c.appendChild(m);
+  if(it.text)c.appendChild(el('div','quote',it.text));
+  if(it.prevLevel&&it.prevLevel!==it.level)c.appendChild(el('div','diff','前回 '+it.prevLevel+' → 今回 '+it.level+(it.diffNote?'：'+it.diffNote:'')));
+  if(it.indicators&&it.indicators.length){var ch=el('div','chips');it.indicators.forEach(function(x){ch.appendChild(el('span','chip ind',x))});c.appendChild(ch)}
+  if(it.why)c.appendChild(el('div','why',it.why));
+  if(it.unknown)c.appendChild(el('div','why','未確認: '+it.unknown));
+  var r=el('div','row');
+  var u=safeUrl(it.url);
+  if(u){var a=el('a','btn','投稿を開く');a.href=u;a.target='_blank';a.rel='noopener';r.appendChild(a)}
+  var cp=el('button','btn','評価をコピー');cp.type='button';
+  cp.onclick=function(){copy(['【'+(it.status||'')+'】危険度'+it.level+' / 確度'+(it.grade||''),it.platform+' '+(it.time||''),it.account||'',it.url||'','「'+(it.text||'')+'」','指標: '+((it.indicators||[]).join('、')||'確認できず'),'根拠: '+(it.why||'')].join('\n'))};
+  r.appendChild(cp);c.appendChild(r);
+  return c;
+}
+function listCard(title,arr){
+  var c=el('div','card');c.appendChild(el('h3',null,title));
+  if(!arr||!arr.length){c.appendChild(el('div','cov','なし'));return c}
+  var ul=el('ul','plain');arr.forEach(function(x){ul.appendChild(el('li',null,x))});c.appendChild(ul);return c;
+}
+function render(){
+  var body=$('#body');body.innerHTML='';
+  if(!dbOK){body.appendChild(el('p','empty','この画面を開くには、サインインが必要です。'));return}
+  if(!reports.length){body.appendChild(el('p','empty','まだ調査結果がありません。毎朝の調査が終わると、ここに表示されます。'));return}
+  var r=reports.filter(function(x){return x.date===selDate})[0]||reports[0];
+  $('#dDate').textContent=r.date+(r.generatedAt?'　調査完了 '+r.generatedAt:'')+'（直近'+(r.stats&&r.stats.hours||24)+'時間）';
+  var latest=reports[0].date, td=jstToday();
+  var st=$('#stale');
+  if(latest!==td){st.hidden=false;st.textContent='今日（'+td+'）の調査結果はまだ反映されていません。最新は '+latest+' です。'}else st.hidden=true;
+
+  var items=(r.items||[]).slice();
+  var urgent=items.filter(function(i){return i.urgent});
+  var rest=items.filter(function(i){return !i.urgent});
+  var order={'高':0,'中':1,'低':2};
+  var byLv=function(a,b){return (order[a.level]-order[b.level])||0};
+  var changed=rest.filter(function(i){return i.status==='変化あり'}).sort(byLv);
+  var fresh=rest.filter(function(i){return i.status==='新規'}).sort(byLv);
+  var cont=rest.filter(function(i){return i.status!=='変化あり'&&i.status!=='新規'}).sort(byLv);
+  var cnt=function(l){return items.filter(function(i){return i.level===l}).length};
+
+  var hero=el('div','hero');
+  var big=el('p','big');
+  if(urgent.length){hero.className='hero hi';big.textContent='緊急確認推奨の案件が '+urgent.length+' 件あります'}
+  else if(cnt('高')>0){hero.className='hero hi';big.textContent='危険度「高」の案件が '+cnt('高')+' 件あります'}
+  else if(changed.length){hero.className='hero mid';big.textContent='前回から変化した案件が '+changed.length+' 件あります'}
+  else{hero.className='hero ok';big.textContent=r.headline||'今日の公開検索では、具体的な脅威の指標は確認できませんでした'}
+  hero.appendChild(big);
+  hero.appendChild(el('p',null,r.summary||'見つからなかったことは、脅威がないことの証明ではありません。'));
+  body.appendChild(hero);
+
+  var s=r.stats||{};
+  var stats=el('div','stats');
+  [['hi','高',cnt('高')],['mid','中',cnt('中')],['lo','低',cnt('低')],['','新規',items.filter(function(i){return i.status==='新規'}).length]].forEach(function(x){
+    var d=el('div','stat '+x[0]);d.appendChild(el('b',null,String(x[2])));d.appendChild(el('span',null,x[1]));stats.appendChild(d)});
+  body.appendChild(stats);
+  var parts=[];
+  if(s.x_posts!=null)parts.push('X '+num(s.x_posts)+'件');
+  if(s.fivech_responses!=null)parts.push('5ch '+num(s.fivech_responses)+'レス');
+  if(s.misskey_notes!=null)parts.push('Misskey '+num(s.misskey_notes)+'件');
+  if(s.nico_videos!=null)parts.push('ニコニコ '+num(s.nico_videos)+'件');
+  if(parts.length)body.appendChild(el('p','cov','確認した投稿: '+parts.join(' ／ ')+(s.candidates!=null?'　→ 個別に読んだ候補 '+num(s.candidates)+'件':'')));
+
+  section('緊急確認推奨',urgent,body);
+  section('前回から変化',changed,body);
+  section('新規',fresh,body);
+  section('継続監視',cont,body);
+  if(!items.length)body.appendChild(el('p','empty','記録する案件はありませんでした。'));
+
+  var h=el('h2',null,'今日の調査範囲');body.appendChild(h);
+  var cols=el('div','cols');
+  cols.appendChild(listCard('調べたところ',r.reached));
+  cols.appendChild(listCard('調べられなかったところ',r.notReached));
+  body.appendChild(cols);
+  if(r.next&&r.next.length){body.appendChild(el('h2',null,'次回の重点'));body.appendChild(listCard('追加調査事項',r.next))}
+}
+function renderDays(){
+  var box=$('#days');
+  if(reports.length<2){box.hidden=true;return}
+  box.hidden=false;box.innerHTML='';
+  reports.forEach(function(r){
+    var b=el('button','chip'+((r.date===(selDate||reports[0].date))?' sel':''),r.date.slice(5));b.type='button';
+    b.onclick=function(){selDate=r.date;renderDays();render()};box.appendChild(b);
+  });
+}
+function start(db){
+  db.collection('reports').orderBy('date','desc').limit(30).onSnapshot(function(snap){
+    reports=snap.docs.map(function(d){return d.data()}).filter(function(x){return x&&x.date});
+    if(!selDate||!reports.some(function(x){return x.date===selDate}))selDate=reports.length?reports[0].date:null;
+    renderDays();render();
+  },function(){dbOK=false;render()});
+}
+render();
+try{
+  window.claude.use('db').then(function(db){if(!db){dbOK=false;render();return}start(db)},function(){dbOK=false;render()});
+}catch(e){dbOK=false;render()}
+})();
+</script>
