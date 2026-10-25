@@ -1,0 +1,652 @@
+<title>脅威監視ノート</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: 1画面ずつ切り替える4タブの作業ツール。下部ナビ固定、情報は上から「要約→操作→詳細」 */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --surface2:#eaeef2; --line:#d3dae1;
+  --fg:#16212b; --muted:#566574; --accent:#0b6a8a; --accent-fg:#ffffff;
+  --hi:#b3261e; --hi-bg:#fbe7e5; --mid:#8a5300; --mid-bg:#fbefd5; --lo:#2f6b4f; --lo-bg:#e3f1e9;
+  --focus:#0b6a8a;
+  --sans:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f161c; --surface:#17212a; --surface2:#1e2b36; --line:#2c3b48;
+    --fg:#e6edf2; --muted:#9aabb8; --accent:#4cb4d6; --accent-fg:#06222d;
+    --hi:#ff8d84; --hi-bg:#3a1c1a; --mid:#f0b45a; --mid-bg:#33260f; --lo:#7fd1a3; --lo-bg:#142a1f;
+    --focus:#4cb4d6; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f161c; --surface:#17212a; --surface2:#1e2b36; --line:#2c3b48;
+  --fg:#e6edf2; --muted:#9aabb8; --accent:#4cb4d6; --accent-fg:#06222d;
+  --hi:#ff8d84; --hi-bg:#3a1c1a; --mid:#f0b45a; --mid-bg:#33260f; --lo:#7fd1a3; --lo-bg:#142a1f;
+  --focus:#4cb4d6; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.6;
+  padding-block:0 84px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:720px;margin:0 auto}
+header{padding:14px 0 10px}
+header h1{font-size:19px;margin:0;font-weight:700;letter-spacing:.02em;text-wrap:balance}
+header p{margin:2px 0 0;color:var(--muted);font-size:12.5px}
+h2{font-size:16px;margin:0 0 8px;font-weight:700}
+h3{font-size:13px;margin:14px 0 6px;font-weight:700;color:var(--muted);letter-spacing:.06em}
+p{margin:0 0 8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin:0 0 12px}
+.card.flat{background:var(--surface2);border-color:transparent}
+.muted{color:var(--muted)} .small{font-size:12.5px}
+.mono{font-family:var(--mono)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.btn{background:var(--accent);color:var(--accent-fg);border:0;border-radius:8px;padding:9px 14px;font-weight:700;min-height:40px}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+.btn.warn{background:var(--hi);color:#fff}
+.btn.sm{padding:5px 10px;min-height:32px;font-size:13px}
+.btn[disabled],a.btn[aria-disabled="true"]{opacity:.4;pointer-events:none}
+a.btn{display:inline-flex;align-items:center;text-decoration:none}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 11px;font-size:13px;min-height:32px}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.chip.static{cursor:default;min-height:0;padding:2px 9px;font-size:12px}
+.chip.on{background:var(--hi-bg);color:var(--hi);border-color:transparent}
+.chip.ctx{background:var(--mid-bg);color:var(--mid);border-color:transparent}
+input[type=text],input[type=search],textarea,select{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-width:0}
+textarea{min-height:110px;resize:vertical}
+label.f{display:block;font-size:12.5px;color:var(--muted);margin:10px 0 3px}
+.qbox{font-family:var(--mono);font-size:13px;background:var(--surface2);border-radius:8px;padding:9px 10px;word-break:break-all;min-height:40px}
+.plat{display:grid;gap:10px}
+.plat .item{border-top:1px solid var(--line);padding-top:10px}
+.plat .item:first-child{border-top:0;padding-top:0}
+.plat .name{font-weight:700}
+.pill{display:inline-block;border-radius:6px;padding:1px 9px;font-weight:700;font-size:14px}
+.pill.hi{background:var(--hi-bg);color:var(--hi)} .pill.mid{background:var(--mid-bg);color:var(--mid)} .pill.lo{background:var(--lo-bg);color:var(--lo)}
+.alert{border:1px solid var(--hi);background:var(--hi-bg);color:var(--hi);border-radius:10px;padding:12px 14px;margin:0 0 12px;font-weight:500}
+.alert b{font-weight:700}
+.note{border-left:3px solid var(--mid);background:var(--mid-bg);color:var(--fg);padding:8px 10px;border-radius:0 8px 8px 0;margin:0 0 10px;font-size:13.5px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.tg{display:flex;gap:8px;align-items:center;background:var(--surface2);border-radius:8px;padding:7px 9px;font-size:13.5px;min-height:38px}
+.tg input{width:18px;height:18px;flex:none;accent-color:var(--accent)}
+.tg.auto{outline:1px solid var(--hi)}
+pre.rep{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:12.5px;background:var(--surface2);border-radius:8px;padding:10px;margin:8px 0;max-height:320px;overflow:auto}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.stat b{display:block;font-size:22px;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.case{border-top:1px solid var(--line);padding:10px 0}
+.case:first-child{border-top:0}
+.case .meta{font-size:12.5px;color:var(--muted)}
+.case .txt{font-size:13.5px;margin:4px 0;word-break:break-word}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-top:1px solid var(--line);padding:6px 6px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:500;white-space:nowrap}
+.scroll{overflow-x:auto}
+ul.chk{list-style:none;padding:0;margin:0}
+ul.chk li{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+ul.chk li:first-child{border-top:0}
+ul.chk input{width:20px;height:20px;margin-top:2px;flex:none;accent-color:var(--accent)}
+ul.chk li.done span{color:var(--muted);text-decoration:line-through}
+ul.plain{margin:0 0 8px;padding-left:20px} ul.plain li{margin:2px 0}
+details{border-top:1px solid var(--line);padding:8px 0} details:first-of-type{border-top:0}
+summary{cursor:pointer;font-weight:700;min-height:32px}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(4,1fr);
+  padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+nav.tabs button{background:none;border:0;padding:10px 4px 9px;font-size:13px;color:var(--muted);min-height:54px;position:relative}
+nav.tabs button[aria-selected="true"]{color:var(--accent);font-weight:700;box-shadow:inset 0 3px 0 var(--accent)}
+nav.tabs .cnt{display:inline-block;min-width:18px;border-radius:9px;background:var(--hi);color:#fff;font-size:11px;line-height:18px;margin-left:4px;padding:0 5px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:30;max-width:90vw}
+.copybox{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.copybox .in{background:var(--surface);border-radius:12px;padding:14px;width:min(560px,100%)}
+@media (prefers-reduced-motion:no-preference){ .toast{animation:fade .15s ease-out} @keyframes fade{from{opacity:0}to{opacity:1}} }
+</style>
+
+<div class="wrap">
+<header>
+  <h1>脅威監視ノート</h1>
+  <p>公開情報・直近24時間・記録はこの端末だけに保存</p>
+</header>
+
+<div class="note" id="storeWarn" hidden>この環境では保存できません。記録は「コピー」で控えてください。</div>
+
+<!-- ============ 巡回 ============ -->
+<section id="v-patrol" data-view="patrol">
+  <div class="card">
+    <h2>検索語を組み立てる</h2>
+    <p class="small muted">語を選ぶと、各サービスの「24時間・新着順」の検索ページを開くリンクができます。ヒットしただけでは脅威ではありません。必ず「判定」タブで確認します。</p>
+    <h3>基本語（表記変形を自動で追加）</h3>
+    <div class="chips" id="g-base"></div>
+    <label class="tg" style="margin-top:8px"><input type="checkbox" id="useVariants" checked> 伏字・数字・ローマ字などの変形も含める</label>
+    <h3>危機・恨み・接近</h3>
+    <div class="chips" id="g-soft"></div>
+    <h3>標的（1つ）</h3>
+    <div class="chips" id="g-target"></div>
+    <h3>日時（1つ）</h3>
+    <div class="chips" id="g-time"></div>
+    <label class="f" for="freeWord">自由入力（任意）</label>
+    <input type="search" id="freeWord" placeholder="例: 発見した新しい言い回し" autocomplete="off">
+    <h3>組み立てた検索語</h3>
+    <div class="qbox" id="qOut">語を選んでください</div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn ghost sm" id="copyQ">検索語をコピー</button>
+      <button class="btn ghost sm" id="clearQ">選択を解除</button>
+    </div>
+  </div>
+
+  <div class="card plat" id="platList"></div>
+
+  <div class="card flat">
+    <h2>検索のコツ（これまでの実測）</h2>
+    <ul class="plain small">
+      <li>Yahoo!リアルタイムはスペースがAND、◯などの記号は無視されます。「こ ろ す」「◯す」で探すと雑音だらけになるので、変形は結果側の本文で確認します。</li>
+      <li>爆サイの検索は関連度順で、新着には向きません。地域板の事件・雑談の新着スレを直接見ます。</li>
+      <li>5chは「ニュース」「事件」「地域」「悩み・孤立」系の板の新着スレを見ます。</li>
+      <li>見つからないことは、脅威がないことの証明ではありません。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ 判定 ============ -->
+<section id="v-triage" data-view="triage" hidden>
+  <div class="card">
+    <h2>投稿を判定する</h2>
+    <p class="small muted">見つけた投稿の本文を貼ってください。語の検出と、危険度・確度の整理をします。判定は目安です。最終判断は文脈を読んで行います。</p>
+    <label class="f" for="tText">投稿の本文</label>
+    <textarea id="tText" placeholder="ここに貼り付け"></textarea>
+    <div id="tDetect" style="margin-top:8px"></div>
+  </div>
+
+  <div id="tAlert"></div>
+
+  <div class="card">
+    <h2>確認できた指標</h2>
+    <p class="small muted">自動検出（赤枠）を確認して、手で付け外しできます。</p>
+    <div class="grid2" id="tInd"></div>
+    <div class="row" style="margin-top:12px">
+      <div>危険度 <span id="tLevel" class="pill lo">低</span></div>
+    </div>
+    <p class="small" id="tWhy" style="margin-top:6px"></p>
+  </div>
+
+  <div class="card">
+    <h2>記録の項目</h2>
+    <label class="f" for="tPlat">プラットフォーム</label>
+    <select id="tPlat"></select>
+    <label class="f" for="tAcct">アカウントまたは投稿のURL（同じものの継続判定に使います）</label>
+    <input type="text" id="tAcct" placeholder="https://… / @名前" autocomplete="off">
+    <label class="f" for="tWhen">投稿日時（任意）</label>
+    <input type="text" id="tWhen" placeholder="例: 10/25 14:10" autocomplete="off">
+    <label class="f" for="tGrade">情報確度</label>
+    <select id="tGrade">
+      <option value="A">A 一次情報で確認</option>
+      <option value="B">B 本人の公開投稿で確認</option>
+      <option value="C">C 信頼できる第三者情報</option>
+      <option value="D" selected>D 転載・スクリーンショット等</option>
+      <option value="E">E 出所不明</option>
+    </select>
+    <label class="f" for="tPrim">一次情報</label>
+    <select id="tPrim"><option value="未確認">一次情報未確認</option><option value="確認">一次情報を確認できた</option></select>
+    <label class="f" for="tUnk">未確認事項</label>
+    <textarea id="tUnk" style="min-height:64px" placeholder="例: 添付画像の内容 / 日時の真偽"></textarea>
+    <label class="f" for="tAna">分析（事実と分けて書く）</label>
+    <textarea id="tAna" style="min-height:64px"></textarea>
+    <p class="small muted" style="margin-top:8px">本名・住所・勤務先・精神状態などの推測は書かないでください。</p>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="tSave">記録に保存</button>
+      <button class="btn ghost" id="tCopy">報告をコピー</button>
+      <button class="btn ghost" id="tClear">クリア</button>
+    </div>
+    <pre class="rep" id="tReport"></pre>
+  </div>
+</section>
+
+<!-- ============ 記録 ============ -->
+<section id="v-log" data-view="log" hidden>
+  <div class="stats" id="logStats"></div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">今日の記録</h2>
+      <div class="row">
+        <button class="btn sm" id="copyDaily">日次総括をコピー</button>
+      </div>
+    </div>
+    <div id="logList"></div>
+  </div>
+  <div class="card flat">
+    <div class="row" style="justify-content:space-between">
+      <span class="small muted">過去の記録: <span id="oldCount">0</span>件</span>
+      <button class="btn ghost sm" id="showOld">過去も表示</button>
+    </div>
+    <div id="oldList"></div>
+  </div>
+  <div class="card flat">
+    <p class="small muted">記録はこの端末のブラウザだけに保存され、他の端末やClaudeには届きません。Claudeに評価を頼むときは、各記録の「コピー」から貼り付けてください。</p>
+    <button class="btn ghost sm" id="wipe">すべての記録を消す</button>
+    <span class="small" id="wipeAsk" hidden> 本当に消しますか？ <button class="btn warn sm" id="wipeYes">消す</button> <button class="btn ghost sm" id="wipeNo">やめる</button></span>
+  </div>
+</section>
+
+<!-- ============ 手順 ============ -->
+<section id="v-guide" data-view="guide" hidden>
+  <div class="card">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">今日の巡回</h2><span class="small muted" id="chkDate"></span></div>
+    <ul class="chk" id="chkList"></ul>
+  </div>
+
+  <div class="alert"><b>具体的な標的・日時・場所・手段がそろう投稿を見つけたら</b>、評価を待たずに警察へ。本人に接触しないでください。<br>
+    緊急: <b class="mono">110</b>　／　相談: <b class="mono">#9110</b>　／　各プラットフォームの通報機能も使います。</div>
+
+  <div class="card">
+    <h2>守ること</h2>
+    <ul class="plain">
+      <li>公開されている投稿だけを見る。DM・非公開グループ・個人チャットには入らない。</li>
+      <li>見るだけ。フォロー・いいね・コメント・本人への接触はしない。</li>
+      <li>名前・住所・勤務先・家族・精神状態などを推測しない。</li>
+      <li>単語だけで判断しない。標的・日時・場所・手段・準備がそろうかを見る。</li>
+      <li>危険度（内容）と確度（情報の確かさ）を分ける。確度D・Eは「事実が確定した」と書かない。</li>
+      <li>事実と分析を分けて書く。見つからなくても「脅威がない」とは書かない。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>サービスごとにできること</h2>
+    <div class="scroll"><table>
+      <tr><th>サービス</th><th>この端末で</th><th>注意</th></tr>
+      <tr><td>X</td><td>ログイン済みアプリで検索（24時間・最新）</td><td>Yahoo!リアルタイムはログイン不要</td></tr>
+      <tr><td>Instagram</td><td>ハッシュタグ・場所タグ</td><td>キーワード検索は不安定。ストーリーズは24時間で消える</td></tr>
+      <tr><td>Facebook</td><td>公開投稿の検索</td><td>グループ・個人は見えない</td></tr>
+      <tr><td>YouTube・ニコニコ</td><td>新着動画のタイトル・説明</td><td>コメント欄は別に確認</td></tr>
+      <tr><td>5ch・爆サイ</td><td>新着スレ、検索ページ</td><td>匿名で確度は低く、釣りも多い</td></tr>
+      <tr><td>Misskey ほか</td><td>公開ノート検索</td><td>Bluesky・Mastodonは未確認</td></tr>
+      <tr><td>LINE・DM・非公開</td><td>対象外</td><td>私的通信は調べない</td></tr>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <h2>これまでの知見</h2>
+    <details open><summary>初回スイープの結果（2026-10-25）</summary>
+      <ul class="plain small">
+        <li>X: 24時間の投稿489件を確認。危険度「高」なし。</li>
+        <li>5ch: 約4.6万レス、加害語ヒット約2,300件。具体的な予告なし。</li>
+        <li>Misskey 7件・ニコニコ16件・爆サイ0件。いずれも要確認なし。</li>
+        <li>継続監視は、休校を願う「学校を爆破」型の冗談、匿名掲示板の「他人を殺したい」型の危機表現（具体要素なし）、他者への自殺の勧め。</li>
+      </ul>
+    </details>
+    <details><summary>雑音になりやすい言葉</summary>
+      <p class="small">「殺す気か」（褒め言葉）、「全員4ね」（愚痴）、「職場・学校を爆破したい」（休みたい）、「皆殺し」（作品や歴史）、「飯テロ」、「殺す（プロセス）」。標的・日時・手段が加わったら再評価します。</p>
+    </details>
+    <details><summary>新しく見つけた表記</summary>
+      <p class="small">「56して」（殺して）。見つけた語は、検索語の「自由入力」から再検索して広げます。</p>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Claudeに渡す依頼文</h2>
+    <p class="small muted">コピーして、Claudeに貼り付けます。</p>
+    <div class="row">
+      <button class="btn ghost sm" data-tpl="eval">投稿の評価を頼む</button>
+      <button class="btn ghost sm" data-tpl="sweep">24時間スイープを頼む</button>
+      <button class="btn ghost sm" data-tpl="diff">前回との差分を頼む</button>
+    </div>
+  </div>
+</section>
+</div>
+
+<nav class="tabs" role="tablist" aria-label="画面">
+  <button role="tab" data-tab="patrol" aria-selected="true">巡回</button>
+  <button role="tab" data-tab="triage" aria-selected="false">判定</button>
+  <button role="tab" data-tab="log" aria-selected="false">記録<span class="cnt" id="urgCnt" hidden>0</span></button>
+  <button role="tab" data-tab="guide" aria-selected="false">手順</button>
+</nav>
+<div class="toast" id="toast" hidden></div>
+<div class="copybox" id="copybox" hidden><div class="in"><p class="small">自動コピーができませんでした。全選択してコピーしてください。</p><textarea id="cbText" readonly style="min-height:160px"></textarea><div class="row" style="margin-top:8px"><button class="btn" id="cbSel">全選択</button><button class="btn ghost" id="cbClose">閉じる</button></div></div></div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s,r){return (r||document).querySelector(s)};
+var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+var enc=encodeURIComponent;
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+
+/* ---------- 保存 ---------- */
+var storeOK=true;
+function sget(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){storeOK=false;return d}}
+function sset(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){storeOK=false;$('#storeWarn').hidden=false;return false}}
+function today(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
+function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(function(){t.hidden=true},1800)}
+function copy(text){
+  function fb(){$('#cbText').value=text;$('#copybox').hidden=false;$('#cbText').focus();$('#cbText').select()}
+  try{ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){toast('コピーしました')},fb)} else fb() }catch(e){fb()}
+}
+$('#cbSel').onclick=function(){$('#cbText').focus();$('#cbText').select()};
+$('#cbClose').onclick=function(){$('#copybox').hidden=true};
+
+/* ---------- タブ ---------- */
+var tabs=['patrol','triage','log','guide'];
+function show(v){
+  if(tabs.indexOf(v)<0)v='patrol';
+  tabs.forEach(function(t){$('#v-'+t).hidden=(t!==v)});
+  $$('nav.tabs button').forEach(function(b){b.setAttribute('aria-selected',b.dataset.tab===v?'true':'false')});
+  window.scrollTo(0,0);
+  if(v==='log')renderLog();
+}
+$$('nav.tabs button').forEach(function(b){b.onclick=function(){show(b.dataset.tab)}});
+show((location.hash||'').replace('#',''));
+
+/* ---------- 巡回: 語彙 ---------- */
+var BASE={
+  '殺す':['殺す','ころす','コロス','◯す','○す','殺◯','こ◯す','korosu','56す'],
+  '死ね':['死ね','しね','シネ','4ね','タヒね','ﾀﾋね','shine'],
+  '爆破':['爆破','ばくは','bakuha','爆破予告'],
+  '放火':['放火','燃やす','火をつける'],
+  '無差別':['無差別','皆殺し','無差別に'],
+  '道連れ':['道連れ','巻き込む'],
+  '襲撃':['襲撃','殴り込み','乗り込む','突撃']
+};
+var SOFT=['最後の仕事','全部終わらせる','無敵の人','死刑になりたい','誰でもよかった','落とし前','報いを受けさせる','天誅','待ち伏せ','出待ち','会いに行く','決着をつける','次は俺','俺もやる'];
+var TARGET=['学校','駅','演説','会場','ライブ','イベント','職場','病院','市役所','空港','繁華街'];
+var TIME=['明日','今日','今夜','週末','決行'];
+var sel={base:{},soft:{},target:null,time:null};
+function chips(id,list,kind,single){
+  var box=$(id);box.innerHTML='';
+  list.forEach(function(w){
+    var b=document.createElement('button');b.className='chip';b.type='button';b.textContent=w;b.setAttribute('aria-pressed','false');
+    b.onclick=function(){
+      if(single){sel[kind]=(sel[kind]===w)?null:w;$$('button',box).forEach(function(x){x.setAttribute('aria-pressed',x.textContent===sel[kind]?'true':'false')})}
+      else{sel[kind][w]=!sel[kind][w];b.setAttribute('aria-pressed',sel[kind][w]?'true':'false')}
+      build();
+    };
+    box.appendChild(b);
+  });
+}
+chips('#g-base',Object.keys(BASE),'base',false);
+chips('#g-soft',SOFT,'soft',false);
+chips('#g-target',TARGET,'target',true);
+chips('#g-time',TIME,'time',true);
+$('#useVariants').onchange=build;
+$('#freeWord').oninput=build;
+$('#clearQ').onclick=function(){sel={base:{},soft:{},target:null,time:null};$('#freeWord').value='';$$('.chip[aria-pressed]').forEach(function(b){b.setAttribute('aria-pressed','false')});build()};
+$('#copyQ').onclick=function(){if(Q.x)copy(Q.x)};
+
+var Q={words:[],x:'',plain:'',tag:''};
+function build(){
+  var words=[];
+  var useV=$('#useVariants').checked;
+  Object.keys(sel.base).forEach(function(k){if(sel.base[k]){(useV?BASE[k]:[k]).forEach(function(v){words.push(v)})}});
+  Object.keys(sel.soft).forEach(function(k){if(sel.soft[k])words.push(k)});
+  var free=$('#freeWord').value.trim();
+  if(free)words.push(free);
+  var seen={};words=words.filter(function(w){if(seen[w])return false;seen[w]=1;return true});
+  var tail=[sel.target,sel.time].filter(Boolean).join(' ');
+  var grp=words.length>1?'('+words.map(function(w){return /\s/.test(w)?'"'+w+'"':w}).join(' OR ')+')':(words[0]||'');
+  var plain=words.length>1?words.join(' OR '):(words[0]||'');
+  Q.words=words;
+  Q.x=words.length?(grp+(tail?' '+tail:'')):'';
+  Q.plain=words.length?(plain+(tail?' '+tail:'')):'';
+  Q.tag=(words[0]||'').replace(/\s/g,'');
+  $('#qOut').textContent=Q.x?Q.x:'語を選んでください';
+  renderPlat();
+}
+
+/* ---------- 巡回: サービス別リンク ---------- */
+var AREAS=[[3,'東京'],[7,'大阪'],[5,'愛知'],[10,'福岡'],[1,'北海道'],[2,'南東北'],[14,'北東北'],[15,'北関東'],[17,'南関東'],[4,'甲信越'],[6,'北陸'],[19,'東海'],[18,'関西'],[8,'山陽'],[12,'山陰'],[9,'四国'],[20,'北部九州'],[16,'南部九州'],[11,'沖縄']];
+var areaSel=sget('tn_area',3);
+function link(label,href,ok){
+  var a=document.createElement('a');a.className='btn sm';a.textContent=label;
+  if(ok){a.href=href;a.target='_blank';a.rel='noopener'}else{a.setAttribute('aria-disabled','true')}
+  return a;
+}
+function renderPlat(){
+  var box=$('#platList');box.innerHTML='';
+  var has=!!Q.x, x=Q.x, p=Q.plain;
+  var items=[
+    {n:'X（アプリ・ブラウザ）',d:'最新タブ、24時間以内。ログイン済みの端末で開きます。',l:[['X で開く','https://x.com/search?q='+enc(x+' within_time:24h')+'&f=live',has]]},
+    {n:'Yahoo!リアルタイム検索',d:'Xの公開投稿をログインなしで見られます。新着順です。',l:[['開く','https://search.yahoo.co.jp/realtime/search?p='+enc(p)+'&ei=UTF-8',has]]},
+    {n:'Instagram',d:'ハッシュタグのみ。選んだ最初の語を使います。',l:[['タグを開く','https://www.instagram.com/explore/tags/'+enc(Q.tag)+'/',!!Q.tag]]},
+    {n:'Facebook',d:'公開投稿の検索。グループや個人の投稿は出ません。',l:[['開く','https://www.facebook.com/search/posts/?q='+enc(p),has]]},
+    {n:'YouTube・ニコニコ',d:'新着の動画。タイトルと説明を見ます。',l:[['YouTube（今日）','https://www.youtube.com/results?search_query='+enc(p)+'&sp=EgIIAg%253D%253D',has],['ニコニコ（新着）','https://www.nicovideo.jp/search/'+enc(p)+'?sort=f&order=d',has]]},
+    {n:'5ch',d:'検索ページが開きます。新着スレは各板で確認します。',l:[['ff5ch','https://ff5ch.syoboi.jp/?q='+enc(p),has],['5ch検索','https://find.5ch.net/search?q='+enc(p),has]]},
+    {n:'爆サイ',d:'地域を選びます。検索は関連度順です。',area:true,l:[['開く','https://bakusai.com/sch_all/acode='+areaSel+'/word='+enc(p)+'/',has]]},
+    {n:'Misskey',d:'公開ノートの検索。',l:[['開く','https://misskey.io/search?q='+enc(p),has]]},
+    {n:'報道済みかを確認（Google）',d:'直近24時間のニュースと一般のウェブ。報道済みの事案は除外します。',l:[['ニュース','https://www.google.com/search?q='+enc(p)+'&tbm=nws&tbs=qdr:d',has],['ウェブ','https://www.google.com/search?q='+enc(p)+'&tbs=qdr:d',has]]}
+  ];
+  items.forEach(function(it){
+    var d=document.createElement('div');d.className='item';
+    var h='<div class="name">'+esc(it.n)+'</div><div class="small muted" style="margin:2px 0 8px">'+esc(it.d)+'</div>';
+    d.innerHTML=h;
+    if(it.area){
+      var s=document.createElement('select');s.setAttribute('aria-label','爆サイの地域');s.style.marginBottom='8px';
+      AREAS.forEach(function(a){var o=document.createElement('option');o.value=a[0];o.textContent=a[1];if(a[0]===areaSel)o.selected=true;s.appendChild(o)});
+      s.onchange=function(){areaSel=+s.value;sset('tn_area',areaSel);renderPlat()};
+      d.appendChild(s);
+    }
+    var r=document.createElement('div');r.className='row';
+    it.l.forEach(function(l){r.appendChild(link(l[0],l[1],l[2]))});
+    d.appendChild(r);box.appendChild(d);
+  });
+  if(!has){var n=document.createElement('p');n.className='small muted';n.textContent='語を選ぶと、ここにリンクが有効になります。';box.insertBefore(n,box.firstChild)}
+}
+
+/* ---------- 判定 ---------- */
+var IND=[
+  ['intent','加害の意思'],['target','標的'],['time','日時'],['location','場所'],['method','手段'],['capability','実行能力'],
+  ['preparation','準備行動'],['surveillance','下見・監視'],['approach','接近'],['fixation','特定対象への執着'],['leakage','第三者へのほのめかし'],
+  ['escalation','急な過激化'],['mobilization','呼びかけ'],['copycat','模倣・称賛'],['grievance','恨み・復讐'],['crisis','危機的表現']
+];
+var RX={
+  intent:/殺す|殺し|ころす|コロス|[◯○〇●]す|56す|56して|4ね|タヒ|ﾀﾋ|死ね|爆破|放火|燃やす|刺す|轢|皆殺し|道連れ|襲撃|やってやる|粛清|天誅/,
+  target:/学校|小学校|中学|高校|大学|駅|空港|市役所|役所|演説|会場|ライブ|フェス|イベント|病院|モール|議員|首相|総理|知事|候補|職場|会社|繁華街/,
+  time:/明日|今日|今夜|今晩|週末|来週|\d{1,2}月\d{1,2}日|\d{1,2}日|\d{1,2}時|当日|決行|Xデー/,
+  location:/[一-龥ァ-ヶー]{2,8}(駅|市役所|学校|公園|ホール|球場|モール|ビル|広場)|[一-龥]{1,5}(市|区|町)の/,
+  method:/刃物|ナイフ|包丁|車で|トラック|銃|爆弾|ガソリン|灯油|毒/,
+  preparation:/買った|用意した|準備(した|できた|完了)|手に入れた|揃えた/,
+  surveillance:/下見|場所を見に|会場を確認|出入口|警備の/,
+  approach:/待ち伏せ|出待ち|乗り込む|会いに行く|直接行く|現地に行く|近くまで来た|そこで会おう/,
+  mobilization:/集合|集まれ|みんなで|仲間を募|一緒にやる/,
+  copycat:/次は俺|俺もやる|模倣|真似して|(称賛|神|英雄).{0,6}(犯人|事件)/,
+  grievance:/復讐|恨み|許さない|報いを|思い知らせ|落とし前|ぶっ潰/,
+  crisis:/最後の|全部終わらせ|終わりにする|もう限界|人生終了|無敵の人|死刑になりたい|どうせ死ぬ|遺書|誰でもよかった/
+};
+var BENIGN=/ゲーム|実況|配信|アニメ|漫画|映画|ドラマ|小説|キャラ|ボス|ガチャ|推し|ｗｗ|www|草|笑|ネタ|冗談|殺す気か|殺す気で|死ぬほど|記事|ニュース|報道|容疑者|逮捕|プロセス/;
+var ind={};IND.forEach(function(i){ind[i[0]]=false});
+var auto={};
+function render_ind(){
+  var box=$('#tInd');box.innerHTML='';
+  IND.forEach(function(i){
+    var l=document.createElement('label');l.className='tg'+(auto[i[0]]?' auto':'');
+    var c=document.createElement('input');c.type='checkbox';c.checked=!!ind[i[0]];
+    c.onchange=function(){ind[i[0]]=c.checked;evalNow()};
+    l.appendChild(c);l.appendChild(document.createTextNode(i[1]));box.appendChild(l);
+  });
+}
+function detect(){
+  var t=$('#tText').value;auto={};
+  Object.keys(RX).forEach(function(k){auto[k]=RX[k].test(t)});
+  IND.forEach(function(i){ind[i[0]]=!!auto[i[0]]});
+  var hits=IND.filter(function(i){return auto[i[0]]}).map(function(i){return '<span class="chip static on">'+esc(i[1])+'</span>'});
+  var ben=BENIGN.exec(t);
+  var h='';
+  if(!t.trim())h='<p class="small muted">本文を貼ると、検出した指標がここに出ます。</p>';
+  else h='<div class="chips">'+(hits.join('')||'<span class="small muted">該当する語は検出されませんでした</span>')+'</div>'+(ben?'<div class="chips" style="margin-top:6px"><span class="chip static ctx">文脈注意: 「'+esc(ben[0])+'」</span></div><p class="small muted" style="margin-top:4px">ゲーム・創作・冗談・報道の引用の可能性があります。文脈を確認してください。</p>':'');
+  $('#tDetect').innerHTML=h;
+  render_ind();evalNow();
+}
+function evaluate(){
+  var spec=['target','time','location','method','preparation','approach','surveillance'].filter(function(k){return ind[k]}).length;
+  var soft=['crisis','grievance','fixation','copycat','escalation','leakage','mobilization'].filter(function(k){return ind[k]}).length;
+  var high=(ind.intent&&ind.target&&ind.time)||(ind.target&&ind.method&&ind.preparation)||(ind.intent&&spec>=3);
+  var mid=!high&&((ind.intent&&spec>=1)||(soft+(ind.intent?1:0)>=2));
+  var lvl=high?3:(mid?2:1);
+  var ben=BENIGN.test($('#tText').value);
+  var why=[];
+  var have=IND.filter(function(i){return ind[i[0]]}).map(function(i){return i[1]});
+  if(have.length)why.push('確認した指標: '+have.join('、'));
+  if(high)why.push('「意思＋標的＋日時」または「標的＋手段＋準備」などの具体要素がそろっています');
+  else if(mid)why.push('敵意・危機表現・接近のいずれかが複数ありますが、標的・日時・手段などの具体要素が不足しています');
+  else why.push('具体的な標的・日時・手段を伴う指標は確認できません');
+  var down=false;
+  if(ben&&lvl>1){lvl-=1;down=true;why.push('文脈注意（ゲーム・創作・冗談・報道の引用の語）があるため、一段下げて表示しています。本文で確認してください')}
+  var urgent=(lvl===3)||(ind.target&&ind.time&&(ind.location||ind.approach))&&!down;
+  return {lvl:lvl,why:why,urgent:!!urgent};
+}
+var LV={3:['高','hi'],2:['中','mid'],1:['低','lo']};
+var cur=null;
+function evalNow(){
+  cur=evaluate();
+  var p=$('#tLevel');p.textContent=LV[cur.lvl][0];p.className='pill '+LV[cur.lvl][1];
+  $('#tWhy').textContent=cur.why.join('。')+'。';
+  var grade=$('#tGrade').value;
+  var al='';
+  if(cur.urgent){
+    al='<div class="alert"><b>【緊急確認推奨】</b> 公開情報上、具体的な脅威を示唆する情報が確認されました（真偽は未確認）。<br>対象・日時・場所を控え、<b>110</b> または各サービスの通報機能で連絡してください。本人には接触しないでください。'+((grade==='D'||grade==='E')?'<br>確度が低いため、脅威が事実であるとは断定しません。':'')+'</div>';
+  }
+  if(ind.crisis||/死にたい|消えたい/.test($('#tText').value)){
+    al+='<div class="note">危機的な状態にある人の発言の可能性があります。他者への加害の具体要素がない場合は、通報よりも相談窓口の案内が適切なことがあります。よりそいホットライン <span class="mono">0120-279-338</span>（24時間）</div>';
+  }
+  $('#tAlert').innerHTML=al;
+  $('#tReport').textContent=report();
+}
+function platOpts(){
+  var o=['X','Instagram','Facebook','YouTube','ニコニコ','5ch','爆サイ','Misskey','その他'];
+  $('#tPlat').innerHTML=o.map(function(x){return '<option>'+esc(x)+'</option>'}).join('');
+}
+platOpts();
+function report(status){
+  var t=$('#tText').value.trim();
+  var q=t.length>280?t.slice(0,280)+'…':t;
+  var L=[];
+  L.push('【'+(status||'新規')+'】'+(cur&&cur.urgent?' 【緊急確認推奨】':''));
+  L.push('投稿日時: '+($('#tWhen').value||'未記入'));
+  L.push('プラットフォーム: '+$('#tPlat').value);
+  L.push('アカウント/投稿URL: '+($('#tAcct').value||'未記入'));
+  L.push('元投稿: 「'+q.replace(/\n/g,' ')+'」');
+  L.push('Threat Indicators:');
+  IND.forEach(function(i){L.push('  - '+i[1]+': '+(ind[i[0]]?'確認':'確認できず'))});
+  L.push('危険度: '+LV[cur.lvl][0]);
+  L.push('情報確度: '+$('#tGrade').value);
+  L.push('危険度の根拠: '+cur.why.join('。'));
+  L.push('一次情報: '+($('#tPrim').value==='確認'?'確認できた':'一次情報未確認'));
+  if($('#tUnk').value.trim())L.push('未確認事項: '+$('#tUnk').value.trim());
+  if($('#tAna').value.trim())L.push('分析: '+$('#tAna').value.trim());
+  var g=$('#tGrade').value;
+  if(cur.lvl===3&&(g==='D'||g==='E'))L.push('注記: 確度が低いため、高危険度の事実が確定したとは表現しない');
+  return L.join('\n');
+}
+['#tText'].forEach(function(s){$(s).oninput=detect});
+['#tPlat','#tAcct','#tWhen','#tGrade','#tPrim','#tUnk','#tAna'].forEach(function(s){$(s).oninput=evalNow;$(s).onchange=evalNow});
+$('#tCopy').onclick=function(){copy($('#tReport').textContent)};
+$('#tClear').onclick=function(){['#tText','#tAcct','#tWhen','#tUnk','#tAna'].forEach(function(s){$(s).value=''});$('#tGrade').value='D';$('#tPrim').value='未確認';detect()};
+
+/* ---------- 記録 ---------- */
+var cases=sget('tn_cases',[]);
+function norm(s){return String(s||'').trim().toLowerCase().replace(/^https?:\/\//,'').replace(/[?#].*$/,'').replace(/\/$/,'')}
+$('#tSave').onclick=function(){
+  var t=$('#tText').value.trim();
+  if(!t){toast('本文を貼ってください');return}
+  var key=norm($('#tAcct').value)||('txt:'+t.slice(0,30));
+  var prev=null;for(var i=cases.length-1;i>=0;i--){if(cases[i].key===key){prev=cases[i];break}}
+  var status='新規';if(prev){status=(prev.lvl!==cur.lvl)?'変化あり':'継続'}
+  var rec={id:Date.now(),day:today(),key:key,status:status,prevLvl:prev?prev.lvl:null,lvl:cur.lvl,urgent:cur.urgent,
+    grade:$('#tGrade').value,prim:$('#tPrim').value,plat:$('#tPlat').value,text:t.length>300?t.slice(0,300)+'…':t,
+    ind:IND.filter(function(i){return ind[i[0]]}).map(function(i){return i[1]}),report:report(status)};
+  cases.push(rec);
+  if(sset('tn_cases',cases))toast('保存しました（'+status+'）');else toast('保存できません。コピーして控えてください');
+  badge();
+};
+function badge(){
+  var n=cases.filter(function(c){return c.day===today()&&c.urgent}).length;
+  var b=$('#urgCnt');b.hidden=!n;b.textContent=n;
+}
+function caseHTML(c,idx){
+  var lv=LV[c.lvl];
+  var diff=(c.status==='変化あり'&&c.prevLvl)?'（前回 '+LV[c.prevLvl][0]+' → 今回 '+lv[0]+'）':'';
+  return '<div class="case"><div class="row" style="justify-content:space-between"><span><span class="pill '+lv[1]+'">'+lv[0]+'</span> <span class="chip static">確度'+esc(c.grade)+'</span> <span class="chip static">'+esc(c.status)+'</span>'+(c.urgent?' <span class="chip static on">緊急確認推奨</span>':'')+'</span></div>'+
+    '<div class="meta" style="margin-top:4px">'+esc(c.plat)+' ・ '+esc(c.day)+' '+esc(diff)+'</div>'+
+    '<div class="txt">'+esc(c.text)+'</div>'+
+    '<div class="meta">'+(c.ind.length?esc(c.ind.join('・')):'指標なし')+' ・ 一次情報'+esc(c.prim)+'</div>'+
+    '<div class="row" style="margin-top:6px"><button class="btn ghost sm" data-copy="'+idx+'">報告をコピー</button><button class="btn ghost sm" data-del="'+idx+'">削除</button></div></div>';
+}
+function renderLog(){
+  var t=today();
+  var todayList=cases.map(function(c,i){return [c,i]}).filter(function(x){return x[0].day===t}).reverse();
+  var old=cases.map(function(c,i){return [c,i]}).filter(function(x){return x[0].day!==t}).reverse();
+  var by=function(f){return todayList.filter(function(x){return f(x[0])}).length};
+  $('#logStats').innerHTML=
+    '<div class="stat"><b>'+todayList.length+'</b><span>今日の件数</span></div>'+
+    '<div class="stat"><b style="color:var(--hi)">'+by(function(c){return c.lvl===3})+'</b><span>高</span></div>'+
+    '<div class="stat"><b style="color:var(--mid)">'+by(function(c){return c.lvl===2})+'</b><span>中</span></div>';
+  $('#logList').innerHTML=todayList.length?todayList.map(function(x){return caseHTML(x[0],x[1])}).join(''):'<p class="small muted">今日の記録はまだありません。「判定」タブから保存します。</p>';
+  $('#oldCount').textContent=old.length;
+  $('#oldList').innerHTML='';$('#oldList').dataset.old=JSON.stringify(old.map(function(x){return x[1]}));
+  $('#showOld').hidden=!old.length;
+  $$('[data-copy]').forEach(function(b){b.onclick=function(){copy(cases[+b.dataset.copy].report)}});
+  $$('[data-del]').forEach(function(b){b.onclick=function(){cases.splice(+b.dataset.del,1);sset('tn_cases',cases);badge();renderLog()}});
+}
+$('#showOld').onclick=function(){
+  var ids=JSON.parse($('#oldList').dataset.old||'[]');
+  $('#oldList').innerHTML=ids.map(function(i){return caseHTML(cases[i],i)}).join('');
+  $$('#oldList [data-copy]').forEach(function(b){b.onclick=function(){copy(cases[+b.dataset.copy].report)}});
+  $$('#oldList [data-del]').forEach(function(b){b.onclick=function(){cases.splice(+b.dataset.del,1);sset('tn_cases',cases);badge();renderLog();$('#showOld').onclick()}});
+};
+$('#copyDaily').onclick=function(){
+  var t=today();var L=cases.filter(function(c){return c.day===t});
+  var n=function(f){return L.filter(f).length};
+  var lines=['【日次総括】'+t,
+    '本日の件数: '+L.length+'（新規 '+n(function(c){return c.status==='新規'})+' / 継続 '+n(function(c){return c.status==='継続'})+' / 変化あり '+n(function(c){return c.status==='変化あり'})+'）',
+    '危険度 高: '+n(function(c){return c.lvl===3})+' / 中: '+n(function(c){return c.lvl===2})+' / 低: '+n(function(c){return c.lvl===1}),
+    '情報確度A: '+n(function(c){return c.grade==='A'})+'件',
+    '一次情報確認済み: '+n(function(c){return c.prim==='確認'})+'件 / 未確認: '+n(function(c){return c.prim!=='確認'})+'件',
+    '緊急確認推奨: '+n(function(c){return c.urgent})+'件',''];
+  L.forEach(function(c,i){lines.push((i+1)+'. ['+LV[c.lvl][0]+'/確度'+c.grade+'/'+c.status+'] '+c.plat+' '+c.text.replace(/\n/g,' ').slice(0,60))});
+  if(!L.length)lines.push('今回の公開検索では確認できなかった（脅威が存在しないという意味ではない）');
+  copy(lines.join('\n'));
+};
+$('#wipe').onclick=function(){$('#wipeAsk').hidden=false};
+$('#wipeNo').onclick=function(){$('#wipeAsk').hidden=true};
+$('#wipeYes').onclick=function(){cases=[];sset('tn_cases',cases);$('#wipeAsk').hidden=true;badge();renderLog();toast('消しました')};
+
+/* ---------- 手順 ---------- */
+var STEPS=[
+ '警察・自治体・報道で、今日の予告・注意喚起・要人の日程を確認する',
+ 'X（24時間）: 基本語 → 変形語 → 行動語 → 標的の順に検索する',
+ 'Instagram・Facebook のタグ・地域・場所を確認する',
+ 'YouTube・ニコニコの新着動画のタイトルと説明を確認する',
+ '5ch・爆サイの新着スレ（ニュース・事件・地域・悩み系）を確認する',
+ 'Misskey などの公開ノートを確認する',
+ '見つけた投稿の前後（同じアカウントの時系列・返信・引用）を確認する',
+ '新しい言い回しを抽出して、再検索する',
+ '重複を除き、前回との差分（抽象→具体、不満→復讐、標的→日時→場所）を見る',
+ '日次総括をコピーして保存する'
+];
+function renderChk(){
+  var day=today();var st=sget('tn_chk',{});if(st.day!==day)st={day:day,done:{}};
+  $('#chkDate').textContent=day;
+  var ul=$('#chkList');ul.innerHTML='';
+  STEPS.forEach(function(s,i){
+    var li=document.createElement('li');if(st.done[i])li.className='done';
+    var c=document.createElement('input');c.type='checkbox';c.id='chk'+i;c.checked=!!st.done[i];
+    c.onchange=function(){st.done[i]=c.checked;sset('tn_chk',st);li.className=c.checked?'done':''};
+    var lb=document.createElement('label');lb.setAttribute('for','chk'+i);var sp=document.createElement('span');sp.textContent=s;lb.appendChild(sp);
+    li.appendChild(c);li.appendChild(lb);ul.appendChild(li);
+  });
+}
+var TPL={
+ eval:'次の投稿を、INSTRUCTIONS_Claude.md の基準で評価してください。\n- 確認できた事実と分析を分けて書く\n- 危険度（高/中/低）と情報確度（A〜E）を分ける\n- Target/Time/Location/Method/Preparation の有無を挙げる\n- 個人の特定や推測はしない\n\n【投稿の本文・URL・日時】\n（ここに貼り付け）',
+ sweep:'threat-monitoring/INSTRUCTIONS_Claude.md と SLANG_DICTIONARY.md に従い、直近24時間の個人の投稿のみを対象に、X・爆サイ・5ch・ニコニコ・Misskey の公開情報を調べてください。報道済みの事案は除外し、結果は logs/ に保存してください。見つからない場合は「今回の公開検索では確認できなかった」と書き、脅威がないとは書かないでください。',
+ diff:'前回までの記録（logs/）と今回の結果を比べて、次の変化がある案件を挙げてください。\n抽象→具体、不満→復讐、復讐→標的、標的→日時、日時→場所、場所→接近、接近→準備。\n変化がない継続案件と、新規案件も分けてください。'
+};
+$$('[data-tpl]').forEach(function(b){b.onclick=function(){copy(TPL[b.dataset.tpl])}});
+
+/* ---------- 起動 ---------- */
+build();detect();renderChk();badge();
+if(!storeOK)$('#storeWarn').hidden=false;
+})();
+</script>
