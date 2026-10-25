@@ -1,4 +1,4 @@
-# 方法2：ユーザーのパソコンで Instagram / Facebook / TikTok / X を調査する手順
+# 方法2：ユーザーのパソコンで Instagram / Facebook / X を調査する手順
 
 クラウド版のClaudeは、ログインが必要なSNSを見られない。ユーザーのパソコン上のClaudeに、ログイン済みのChromeを操作させて補う。
 
@@ -6,7 +6,7 @@
 1. Claude Desktop アプリを入れる（またはターミナルで `claude remote-control` を実行して、このリポジトリのフォルダで起動する）
 2. Chrome に拡張機能 **Claude in Chrome** を入れて、Claude Desktop と接続する
 3. 調査専用のChromeプロファイルを作り、次にログインしておく（個人用アカウントと分けること）
-   - X、Instagram、Facebook、TikTok
+   - X、Instagram、Facebook
    - 調査用の別アカウントを使うこと。本アカウントは使わない（アカウント停止・個人情報の露出を避けるため）
 4. このリポジトリを取得する: `git clone https://github.com/st16181995-a11y/my-project` → ブランチ `claude/vehicle-system-rebuild-8gmm4j`
 
@@ -21,7 +21,7 @@
 
 ```
 threat-monitoring/INSTRUCTIONS_Claude.md と threat-monitoring/SLANG_DICTIONARY.md を読んでください。
-Chromeにログイン済みの調査用アカウントで、X・Instagram・Facebook・TikTok の公開検索を使い、
+Chromeにログイン済みの調査用アカウントで、X・Instagram・Facebook の公開検索を使い、
 直近24時間以内の個人の投稿だけを調べてください。ニュース等で既に報じられた事案は除外します。
 
 検索:
