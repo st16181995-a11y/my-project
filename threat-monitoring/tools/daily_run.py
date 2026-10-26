@@ -45,7 +45,7 @@ def add(src, time_jst, url, who, text, extra=None):
     k = text[:50]
     if k in seen: return
     seen.add(k)
-    cands.append({"source": src, "time": time_jst, "url": url, "who": who, "text": text[:400], "score": score(text), **(extra or {})})
+    cands.append({"source": src, "time": time_jst, "url": url, "who": who, "text": text[:200], "score": score(text), **(extra or {})})
 
 yahoo = jl("yahoo.jsonl")
 for r in yahoo:
@@ -72,5 +72,5 @@ stats = {"hours": HOURS, "elapsed_sec": int(time.time() - t0),
          "x_posts": len(yahoo), "misskey_notes": len(jl("misskey.jsonl")), "nico_videos": len(jl("nico.jsonl")),
          "fivech_responses": sum(last(f"5ch{i}.log", r"24h内レス=(\d+)") for i in range(3)),
          "fivech_hits": len(fivech), "boards": len(boards), "candidates": len(cands)}
-json.dump({"stats": stats, "candidates": cands[:120]}, open(os.path.join(OUT, "candidates.json"), "w"), ensure_ascii=False, indent=1)
+json.dump({"stats": stats, "candidates": cands[:40]}, open(os.path.join(OUT, "candidates.json"), "w"), ensure_ascii=False)
 print(json.dumps(stats, ensure_ascii=False))
