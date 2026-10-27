@@ -36,6 +36,15 @@ TIME = re.compile(r"明日|今日|今夜|今晩|週末|来週|\d{1,2}月\d{1,2}�
 NEWS = re.compile(r"容疑者|逮捕|報道によ|記事|asahi\.5ch|ソース|被告|判決")
 FICT = re.compile(r"ゲーム|実況|配信|アニメ|漫画|映画|ドラマ|小説|キャラ|ボス|ガチャ|推し|ｗｗ|www|草|笑|ネタ|冗談|殺す気か|殺す気で|飯テロ|プロセス")
 
+FOCUS = re.compile(r"育樹祭|秋篠宮|皇嗣|新庄総合公園|白浜会館|南紀の台|紀伊田辺|南紀白浜")
+PET = re.compile(r"ペットボトル.{0,30}(爆破|爆弾|爆発)|(爆破|爆弾|爆発).{0,30}ペットボトル")
+APPR = re.compile(r"待ち伏せ|出待ち|乗り込|突撃|会いに行|直接行|襲|殺|爆|刺|燃|放火|やってやる|天誅|決行")
+
+def tag_of(t):
+    if PET.search(t): return "重点：ペットボトル爆破"
+    if FOCUS.search(t) and (ACT.search(t) or INTENT.search(t) or APPR.search(t)): return "重点：育樹祭・秋篠宮"
+    return ""
+
 def score(t):
     return 2 * bool(INTENT.search(t)) + 2 * bool(TGT.search(t)) + 2 * bool(TIME.search(t)) + bool(FIRST.search(t)) \
         - 3 * bool(NEWS.search(t)) - 2 * bool(FICT.search(t))
@@ -45,22 +54,23 @@ def add(src, time_jst, url, who, text, extra=None):
     k = text[:50]
     if k in seen: return
     seen.add(k)
-    cands.append({"source": src, "time": time_jst, "url": url, "who": who, "text": text[:200], "score": score(text), **(extra or {})})
+    tg = tag_of(text)
+    cands.append({"source": src, "time": time_jst, "url": url, "who": who, "text": text[:200], "score": score(text) + (10 if tg else 0), **({"tag": tg} if tg else {}), **(extra or {})})
 
 yahoo = jl("yahoo.jsonl")
 for r in yahoo:
     t = r.get("text") or ""
     t = t.replace("\tSTART\t", "[").replace("\tEND\t", "]")
-    if score(t) >= 4 and ACT.search(t): add("X", r["time_jst"], (r.get("url") or "").split("?")[0], "@" + (r.get("screenName") or ""), t)
+    if (score(t) >= 4 and ACT.search(t)) or tag_of(t): add("X", r["time_jst"], (r.get("url") or "").split("?")[0], "@" + (r.get("screenName") or ""), t)
 fivech = [r for i in range(3) for r in jl(f"5ch{i}.jsonl")]
 for r in fivech:
     t = r["text"]
-    if ACT.search(t) and (FIRST.search(t) or TGT.search(t)) and not NEWS.search(t):
+    if (ACT.search(t) and (FIRST.search(t) or TGT.search(t)) and not NEWS.search(t)) or tag_of(t):
         add("5ch", r["time_jst"], r["url"], r["board"], t, {"thread": r["thread"]})
 for r in jl("misskey.jsonl"): add("Misskey", r["time_jst"], r["url"], "@" + r["user"], r["text"])
 for r in jl("nico.jsonl"):
     t = (r.get("title") or "") + " / " + re.sub(r"<[^>]+>", " ", r.get("description") or "")
-    if ACT.search(t) and not FICT.search(t): add("ニコニコ", r["startTime"][:16].replace("T", " "), r["url"], "", t)
+    if (ACT.search(t) and not FICT.search(t)) or tag_of(t): add("ニコニコ", r["startTime"][:16].replace("T", " "), r["url"], "", t)
 cands.sort(key=lambda c: -c["score"])
 
 def last(logname, pat):
@@ -71,6 +81,6 @@ def last(logname, pat):
 stats = {"hours": HOURS, "elapsed_sec": int(time.time() - t0),
          "x_posts": len(yahoo), "misskey_notes": len(jl("misskey.jsonl")), "nico_videos": len(jl("nico.jsonl")),
          "fivech_responses": sum(last(f"5ch{i}.log", r"24h内レス=(\d+)") for i in range(3)),
-         "fivech_hits": len(fivech), "boards": len(boards), "candidates": len(cands)}
-json.dump({"stats": stats, "candidates": cands[:40]}, open(os.path.join(OUT, "candidates.json"), "w"), ensure_ascii=False)
+         "fivech_hits": len(fivech), "boards": len(boards), "candidates": len(cands), "focus": sum(1 for c in cands if c.get("tag"))}
+json.dump({"stats": stats, "candidates": cands[:50]}, open(os.path.join(OUT, "candidates.json"), "w"), ensure_ascii=False)
 print(json.dumps(stats, ensure_ascii=False))

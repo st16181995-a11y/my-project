@@ -5,7 +5,7 @@ import json, re, sys, time, urllib.request
 from datetime import datetime, timedelta, timezone
 
 JST = timezone(timedelta(hours=9))
-INTENT = re.compile(r"殺|ころ[すし]|コロ[スシ]|ｺﾛ|[◯○〇●]す|56[すし]|4ね|タヒ|ﾀﾋ|死ね|しね|爆破|爆弾|燃やす|放火|刺す|刺し|轢|道連れ|巻き込|無差別|襲撃|テロ")
+INTENT = re.compile(r"殺|ころ[すし]|コロ[スシ]|ｺﾛ|[◯○〇●]す|56[すし]|4ね|タヒ|ﾀﾋ|死ね|しね|爆破|爆弾|燃やす|放火|刺す|刺し|轢|道連れ|巻き込|無差別|襲撃|テロ|待ち伏せ|出待ち|乗り込|突撃|ペットボトル|育樹祭|秋篠宮")
 DATE = re.compile(r"(\d{4})/(\d{2})/(\d{2})\(.\) (\d{2}):(\d{2}):(\d{2})")
 
 
