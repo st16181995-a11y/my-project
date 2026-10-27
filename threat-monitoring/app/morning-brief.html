@@ -123,6 +123,7 @@ function card(it){
   m.appendChild(el('span','chip','確度'+(it.grade||'D')));
   if(it.status)m.appendChild(el('span','chip'+(it.status==='新規'?' new':''),it.status));
   if(it.urgent)m.appendChild(el('span','chip urgent','緊急確認推奨'));
+  if(it.tag)m.appendChild(el('span','chip new',it.tag));
   m.appendChild(el('span',null,[it.platform,it.time].filter(Boolean).join(' ・ ')));
   c.appendChild(m);
   if(it.text)c.appendChild(el('div','quote',it.text));
@@ -155,7 +156,9 @@ function render(){
 
   var items=(r.items||[]).slice();
   var urgent=items.filter(function(i){return i.urgent});
-  var rest=items.filter(function(i){return !i.urgent});
+  var rest0=items.filter(function(i){return !i.urgent});
+  var focus=rest0.filter(function(i){return i.tag});
+  var rest=rest0.filter(function(i){return !i.tag});
   var order={'高':0,'中':1,'低':2};
   var byLv=function(a,b){return (order[a.level]-order[b.level])||0};
   var changed=rest.filter(function(i){return i.status==='変化あり'}).sort(byLv);
@@ -185,7 +188,9 @@ function render(){
   if(s.nico_videos!=null)parts.push('ニコニコ '+num(s.nico_videos)+'件');
   if(parts.length)body.appendChild(el('p','cov','確認した投稿: '+parts.join(' ／ ')+(s.candidates!=null?'　→ 個別に読んだ候補 '+num(s.candidates)+'件':'')));
 
+  if(r.focusNote){var fc=el('div','card');fc.appendChild(el('div','why','重点監視（育樹祭・秋篠宮・ペットボトル爆破）: '+r.focusNote));body.appendChild(fc)}
   section('緊急確認推奨',urgent,body);
+  section('重点監視',focus,body);
   section('前回から変化',changed,body);
   section('新規',fresh,body);
   section('継続監視',cont,body);
