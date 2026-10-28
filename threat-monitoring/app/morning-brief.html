@@ -137,6 +137,20 @@ function card(it){
   }
   if(it.why)c.appendChild(el('div','why',it.why));
   if(it.unknown)c.appendChild(el('div','why','未確認: '+it.unknown));
+  var hm=/^@(\w{1,15})$/.exec(it.account||'');
+  if(hm&&it.platform==='X'&&(it.level!=='低'||it.tag)){
+    var h=hm[1],dh=el('details');dh.appendChild(el('summary',null,'このアカウントの過去の投稿をさかのぼる（Xで検索）'));
+    dh.appendChild(el('div','why','公開投稿のみ。ログイン済みのXで開きます。見つけた投稿はコピーしてClaudeに貼ると、流れとして評価します。個人の特定や接触はしないでください。'));
+    var lr=el('div','row');
+    var q1='from:'+h+' (天皇 OR 皇室 OR 皇族 OR 秋篠宮 OR 不敬)';
+    var q2='from:'+h+' (殺 OR 死ね OR 爆破 OR 襲撃 OR 放火 OR 天誅 OR 実行)';
+    var mk=function(label,q){var a=el('a','btn',label);a.href='https://x.com/search?q='+encodeURIComponent(q)+'&f=live';a.target='_blank';a.rel='noopener';return a};
+    lr.appendChild(mk('皇室に関する投稿（全期間）',q1));
+    lr.appendChild(mk('暴力の言葉（全期間）',q2));
+    var y0=new Date().getFullYear();
+    for(var yy=y0;yy>=y0-3;yy--){lr.appendChild(mk(yy+'年の投稿','from:'+h+' since:'+yy+'-01-01 until:'+(yy+1)+'-01-01'))}
+    dh.appendChild(lr);c.appendChild(dh);
+  }
   var r=el('div','row');
   var u=safeUrl(it.url);
   if(u){var a=el('a','btn','投稿を開く');a.href=u;a.target='_blank';a.rel='noopener';r.appendChild(a)}
