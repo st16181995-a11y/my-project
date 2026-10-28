@@ -219,7 +219,9 @@ function render(){
   var h=el('h2',null,'今日の調査範囲');body.appendChild(h);
   var cols=el('div','cols');
   cols.appendChild(listCard('調べたところ',r.reached));
-  cols.appendChild(listCard('調べられなかったところ',r.notReached));
+  var nr=(r.notReached||[]).slice();
+  if(!nr.some(function(x){return /Threads/.test(x)}))nr.push('Threads（ログインが必要で自動調査には入っていません。スマホのアプリで確認）。');
+  cols.appendChild(listCard('調べられなかったところ',nr));
   body.appendChild(cols);
   if(r.next&&r.next.length){body.appendChild(el('h2',null,'次回の重点'));body.appendChild(listCard('追加調査事項',r.next))}
 }

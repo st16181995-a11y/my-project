@@ -1,4 +1,4 @@
-# 方法2：ユーザーのパソコンで Instagram / Facebook / X を調査する手順
+# 方法2：ユーザーのパソコンで Instagram / Facebook / Threads / X を調査する手順
 
 クラウド版のClaudeは、ログインが必要なSNSを見られない。ユーザーのパソコン上のClaudeに、ログイン済みのChromeを操作させて補う。
 
@@ -21,7 +21,7 @@
 
 ```
 threat-monitoring/INSTRUCTIONS_Claude.md と threat-monitoring/SLANG_DICTIONARY.md を読んでください。
-Chromeにログイン済みの調査用アカウントで、X・Instagram・Facebook の公開検索を使い、
+Chromeにログイン済みの調査用アカウントで、X・Instagram・Facebook・Threads の公開検索を使い、
 直近24時間以内の個人の投稿だけを調べてください。ニュース等で既に報じられた事案は除外します。
 
 検索:

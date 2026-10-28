@@ -261,6 +261,7 @@ nav.tabs .cnt{display:inline-block;min-width:18px;border-radius:9px;background:v
       <tr><th>サービス</th><th>この端末で</th><th>注意</th></tr>
       <tr><td>X</td><td>ログイン済みアプリで検索（24時間・最新）</td><td>Yahoo!リアルタイムはログイン不要</td></tr>
       <tr><td>Instagram</td><td>ハッシュタグ・場所タグ</td><td>キーワード検索は不安定。ストーリーズは24時間で消える</td></tr>
+      <tr><td>Threads</td><td>ログイン済みアプリで検索（最新順）</td><td>ログインが必要。自動調査には入っていません</td></tr>
       <tr><td>Facebook</td><td>公開投稿の検索</td><td>グループ・個人は見えない</td></tr>
       <tr><td>YouTube・ニコニコ</td><td>新着動画のタイトル・説明</td><td>コメント欄は別に確認</td></tr>
       <tr><td>5ch・爆サイ</td><td>新着スレ、検索ページ</td><td>匿名で確度は低く、釣りも多い</td></tr>
@@ -411,6 +412,7 @@ function renderPlat(){
     {n:'X（アプリ・ブラウザ）',d:'最新タブ、24時間以内。ログイン済みの端末で開きます。',l:[['X で開く','https://x.com/search?q='+enc(x+' within_time:24h')+'&f=live',has]]},
     {n:'Yahoo!リアルタイム検索',d:'Xの公開投稿をログインなしで見られます。新着順です。',l:[['開く','https://search.yahoo.co.jp/realtime/search?p='+enc(p)+'&ei=UTF-8',has]]},
     {n:'Instagram',d:'ハッシュタグのみ。選んだ最初の語を使います。',l:[['タグを開く','https://www.instagram.com/explore/tags/'+enc(Q.tag)+'/',!!Q.tag]]},
+    {n:'Threads',d:'ログイン済みのアプリで開きます。最新順の検索です。',l:[['Threadsで開く','https://www.threads.com/search?q='+enc(p)+'&serp_type=default&filter=recent',has]]},
     {n:'Facebook',d:'公開投稿の検索。グループや個人の投稿は出ません。',l:[['開く','https://www.facebook.com/search/posts/?q='+enc(p),has]]},
     {n:'YouTube・ニコニコ',d:'新着の動画。タイトルと説明を見ます。',l:[['YouTube（今日）','https://www.youtube.com/results?search_query='+enc(p)+'&sp=EgIIAg%253D%253D',has],['ニコニコ（新着）','https://www.nicovideo.jp/search/'+enc(p)+'?sort=f&order=d',has]]},
     {n:'5ch',d:'検索ページが開きます。新着スレは各板で確認します。',l:[['ff5ch','https://ff5ch.syoboi.jp/?q='+enc(p),has],['5ch検索','https://find.5ch.net/search?q='+enc(p),has]]},
