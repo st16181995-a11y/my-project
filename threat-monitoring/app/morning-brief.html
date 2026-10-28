@@ -129,6 +129,12 @@ function card(it){
   if(it.text)c.appendChild(el('div','quote',it.text));
   if(it.prevLevel&&it.prevLevel!==it.level)c.appendChild(el('div','diff','前回 '+it.prevLevel+' → 今回 '+it.level+(it.diffNote?'：'+it.diffNote:'')));
   if(it.indicators&&it.indicators.length){var ch=el('div','chips');it.indicators.forEach(function(x){ch.appendChild(el('span','chip ind',x))});c.appendChild(ch)}
+  if(it.timeline)c.appendChild(el('div','why','時系列: '+it.timeline));
+  if(it.related&&it.related.length){
+    var dt=el('details');dt.appendChild(el('summary',null,'関連する投稿（'+it.related.length+'件）'));
+    it.related.forEach(function(x){var d=el('div','quote',(x.time?x.time+'  ':'')+(x.text||''));dt.appendChild(d)});
+    c.appendChild(dt);
+  }
   if(it.why)c.appendChild(el('div','why',it.why));
   if(it.unknown)c.appendChild(el('div','why','未確認: '+it.unknown));
   var r=el('div','row');

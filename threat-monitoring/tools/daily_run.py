@@ -73,6 +73,41 @@ for r in jl("nico.jsonl"):
     if (ACT.search(t) and not FICT.search(t)) or tag_of(t): add("ニコニコ", r["startTime"][:16].replace("T", " "), r["url"], "", t)
 cands.sort(key=lambda c: -c["score"])
 
+# ---- 深掘り: 気になる候補ごとに、同じアカウントの直近1週間／同じスレの前後を集める ----
+import urllib.request
+from datetime import datetime, timedelta, timezone
+JST = timezone(timedelta(hours=9))
+deep = [c for c in cands if c["score"] >= 6 or c.get("tag")][:10]
+xs = sorted({c["who"].lstrip("@") for c in deep if c["source"] == "X" and c["who"]})
+if xs:
+    qf = os.path.join(OUT, "deep_q.txt"); open(qf, "w").write("\n".join("ID:" + x for x in xs) + "\n")
+    py("rt_search.py", qf, os.path.join(OUT, "deep.jsonl"), "168", log="deep.log").wait()
+    byuser = {}
+    for r in jl("deep.jsonl"):
+        byuser.setdefault(r.get("screenName"), []).append(r)
+    for c in deep:
+        if c["source"] != "X": continue
+        posts = sorted(byuser.get(c["who"].lstrip("@"), []), key=lambda r: r["time_jst"], reverse=True)
+        c["context"] = [{"time": r["time_jst"], "text": (r.get("text") or "").replace("\tSTART\t", "").replace("\tEND\t", "")[:110]}
+                        for r in posts if r["time_jst"] != c["time"]][:12]
+for c in deep:
+    if c["source"] != "5ch": continue
+    m = re.match(r"https://([\w.]+)/test/read\.cgi/(\w+)/(\d+)/(\d+)", c["url"])
+    if not m: continue
+    host, board, tid, res = m.group(1), m.group(2), m.group(3), int(m.group(4))
+    try:
+        raw = urllib.request.urlopen(urllib.request.Request(f"https://{host}/{board}/dat/{tid}.dat", headers={"User-Agent": "Mozilla/5.0"}), timeout=25).read().decode("cp932", "replace").splitlines()
+    except Exception:
+        continue
+    ctx = []
+    for i in range(max(1, res - 6), min(len(raw), res + 6) + 1):
+        if i == res: continue
+        p = raw[i - 1].split("<>")
+        if len(p) >= 4:
+            ctx.append({"time": f"#{i} " + re.sub(r"\(.\)", " ", p[2])[:19], "text": re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", p[3].replace("<br>", "\n"))).strip()[:110]})
+    c["context"] = ctx
+    c["context_note"] = "同じスレの前後6レス（5chはIDが日替わりのため、同一人物の追跡はできません）"
+
 def last(logname, pat):
     p = os.path.join(OUT, logname)
     if not os.path.exists(p): return 0
@@ -81,6 +116,6 @@ def last(logname, pat):
 stats = {"hours": HOURS, "elapsed_sec": int(time.time() - t0),
          "x_posts": len(yahoo), "misskey_notes": len(jl("misskey.jsonl")), "nico_videos": len(jl("nico.jsonl")),
          "fivech_responses": sum(last(f"5ch{i}.log", r"24h内レス=(\d+)") for i in range(3)),
-         "fivech_hits": len(fivech), "boards": len(boards), "candidates": len(cands), "focus": sum(1 for c in cands if c.get("tag"))}
+         "fivech_hits": len(fivech), "boards": len(boards), "candidates": len(cands), "focus": sum(1 for c in cands if c.get("tag")), "deepdive": sum(1 for c in cands if c.get("context"))}
 json.dump({"stats": stats, "candidates": cands[:50]}, open(os.path.join(OUT, "candidates.json"), "w"), ensure_ascii=False)
 print(json.dumps(stats, ensure_ascii=False))
