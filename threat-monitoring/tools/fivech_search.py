@@ -61,7 +61,7 @@ def main():
                     if INTENT.search(text):
                         hits += 1
                         f.write(json.dumps({"time_jst": ts.strftime("%Y-%m-%d %H:%M"), "board": f"{name}({d})", "thread": title,
-                                            "url": f"{url.replace('.5ch.io', '.5ch.io')}/test/read.cgi/{d}/{tid}/{i}",
+                                            "url": f"https://{url.split('/')[2]}/test/read.cgi/{d}/{tid}/{i}",
                                             "res": i, "text": text[:400]}, ensure_ascii=False) + "\n")
                 time.sleep(0.4)
             print(f"{name}({d}): {got}スレ取得", file=sys.stderr)
