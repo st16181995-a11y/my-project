@@ -97,7 +97,7 @@ ul.plain{margin:0;padding-left:20px;font-size:13.5px} ul.plain li{margin:2px 0}
 var $=function(s){return document.querySelector(s)};
 function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
 var LV={'高':'hi','中':'mid','低':'lo'};
-var reports=[],selDate=null,dbOK=true;
+var reports=[],selDate=null,dbOK=true,watch=null;
 
 function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(function(){t.hidden=true},1600)}
 function copy(text){
@@ -208,6 +208,28 @@ function render(){
   if(s.nico_videos!=null)parts.push('ニコニコ '+num(s.nico_videos)+'件');
   if(parts.length)body.appendChild(el('p','cov','確認した投稿: '+parts.join(' ／ ')+(s.candidates!=null?'　→ 個別に読んだ候補 '+num(s.candidates)+'件':'')));
 
+  if(watch&&((watch.threats||[]).length||(watch.defamation||[]).length)){
+    body.appendChild(el('h2',null,'注目リスト'));
+    if(watch.updated)body.appendChild(el('p','cov','更新 '+watch.updated+(watch.note?'　'+watch.note:'')));
+    [['脅威として注意',watch.threats,true],['誹謗中傷がひどいアカウント（暴力の示唆なし）',watch.defamation,false]].forEach(function(g){
+      if(!g[1]||!g[1].length)return;
+      var d=el('details');d.open=g[2];d.appendChild(el('summary',null,g[0]+'（'+g[1].length+'件）'));
+      g[1].forEach(function(w){
+        var c=el('div','card');var m=el('div','meta');
+        if(w.level)m.appendChild(el('span','pill '+(LV[w.level]||'lo'),w.level));
+        if(w.grade)m.appendChild(el('span','chip','確度'+w.grade));
+        if(w.state)m.appendChild(el('span','chip new',w.state));
+        m.appendChild(el('span',null,[w.platform,w.when].filter(Boolean).join(' ・ ')));
+        c.appendChild(m);
+        if(w.title)c.appendChild(el('div','why',w.title));
+        if(w.text)c.appendChild(el('div','quote',w.text));
+        if(w.note)c.appendChild(el('div','why',w.note));
+        var u=safeUrl(w.url);if(u){var r2=el('div','row');var a=el('a','btn','開く');a.href=u;a.target='_blank';a.rel='noopener';r2.appendChild(a);c.appendChild(r2)}
+        d.appendChild(c);
+      });
+      body.appendChild(d);
+    });
+  }
   if(r.focusNote){var fc=el('div','card');fc.appendChild(el('div','why','重点監視（育樹祭・秋篠宮・ペットボトル爆破）: '+r.focusNote));body.appendChild(fc)}
   section('緊急確認推奨',urgent,body);
   section('重点監視',focus,body);
@@ -235,6 +257,7 @@ function renderDays(){
   });
 }
 function start(db){
+  db.doc('watchlist/current').onSnapshot(function(s){watch=s.exists?s.data():null;render()},function(){});
   db.collection('reports').orderBy('date','desc').limit(30).onSnapshot(function(snap){
     reports=snap.docs.map(function(d){return d.data()}).filter(function(x){return x&&x.date});
     if(!selDate||!reports.some(function(x){return x.date===selDate}))selDate=reports.length?reports[0].date:null;
