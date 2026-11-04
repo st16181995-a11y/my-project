@@ -17,6 +17,7 @@ procs = [
     py("rt_search.py", os.path.join(HERE, "queries_daily.txt"), os.path.join(OUT, "yahoo.jsonl"), HOURS, log="yahoo.log"),
     py("misskey_search.py", os.path.join(HERE, "queries_bakusai.txt"), os.path.join(OUT, "misskey.jsonl"), HOURS, log="misskey.log"),
     py("nico_search.py", os.path.join(HERE, "queries_nico.txt"), os.path.join(OUT, "nico.jsonl"), HOURS, log="nico.log"),
+    py("yt_comments.py", os.path.join(HERE, "queries_yt.txt"), os.path.join(OUT, "yt.jsonl"), HOURS, log="yt.log"),
 ]
 for i, c in enumerate(chunks):
     bf = os.path.join(OUT, f"boards{i}.txt"); open(bf, "w").write("\n".join(c) + "\n")
@@ -71,6 +72,10 @@ for r in jl("misskey.jsonl"): add("Misskey", r["time_jst"], r["url"], "@" + r["u
 for r in jl("nico.jsonl"):
     t = (r.get("title") or "") + " / " + re.sub(r"<[^>]+>", " ", r.get("description") or "")
     if (ACT.search(t) and not FICT.search(t)) or tag_of(t): add("ニコニコ", r["startTime"][:16].replace("T", " "), r["url"], "", t)
+for r in jl("yt.jsonl"):
+    t = r["text"]
+    if (ACT.search(t) and not FICT.search(t)) or tag_of(t):
+        add("YouTube", r["time_jst"], r["url"], r["author"], t, {"video": r["video"][:60]})
 cands.sort(key=lambda c: -c["score"])
 
 # ---- 深掘り: 気になる候補ごとに、同じアカウントの直近1週間／同じスレの前後を集める ----
@@ -114,7 +119,7 @@ def last(logname, pat):
     m = re.findall(pat, open(p, encoding="utf-8").read())
     return int(m[-1]) if m else 0
 stats = {"hours": HOURS, "elapsed_sec": int(time.time() - t0),
-         "x_posts": len(yahoo), "misskey_notes": len(jl("misskey.jsonl")), "nico_videos": len(jl("nico.jsonl")),
+         "x_posts": len(yahoo), "misskey_notes": len(jl("misskey.jsonl")), "nico_videos": len(jl("nico.jsonl")), "yt_comments": len(jl("yt.jsonl")),
          "fivech_responses": sum(last(f"5ch{i}.log", r"24h内レス=(\d+)") for i in range(3)),
          "fivech_hits": len(fivech), "boards": len(boards), "candidates": len(cands), "focus": sum(1 for c in cands if c.get("tag")), "deepdive": sum(1 for c in cands if c.get("context"))}
 json.dump({"stats": stats, "candidates": cands[:50]}, open(os.path.join(OUT, "candidates.json"), "w"), ensure_ascii=False)
