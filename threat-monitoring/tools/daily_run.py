@@ -17,6 +17,8 @@ procs = [
     py("rt_search.py", os.path.join(HERE, "queries_daily.txt"), os.path.join(OUT, "yahoo.jsonl"), HOURS, log="yahoo.log"),
     py("misskey_search.py", os.path.join(HERE, "queries_bakusai.txt"), os.path.join(OUT, "misskey.jsonl"), HOURS, log="misskey.log"),
     py("nico_search.py", os.path.join(HERE, "queries_nico.txt"), os.path.join(OUT, "nico.jsonl"), HOURS, log="nico.log"),
+    py("anond_latest.py", os.path.join(OUT, "anond.jsonl"), HOURS, log="anond.log"),
+    py("mastodon_local.py", os.path.join(OUT, "mstdn.jsonl"), HOURS, log="mstdn.log"),
     py("nostr_search.py", os.path.join(HERE, "queries_nostr.txt"), os.path.join(OUT, "nostr.jsonl"), HOURS, log="nostr.log"),
     py("yt_comments.py", os.path.join(HERE, "queries_yt.txt"), os.path.join(OUT, "yt.jsonl"), HOURS, log="yt.log"),
 ]
@@ -73,6 +75,12 @@ for r in jl("misskey.jsonl"): add("Misskey", r["time_jst"], r["url"], "@" + r["u
 for r in jl("nico.jsonl"):
     t = (r.get("title") or "") + " / " + re.sub(r"<[^>]+>", " ", r.get("description") or "")
     if (ACT.search(t) and not FICT.search(t)) or tag_of(t): add("ニコニコ", r["startTime"][:16].replace("T", " "), r["url"], "", t)
+for r in jl("anond.jsonl"):
+    t = r["text"]
+    if (ACT.search(t) and (FIRST.search(t) or TGT.search(t)) and not FICT.search(t)) or tag_of(t): add("はてな匿名", r["time_jst"], r["url"], "", t)
+for r in jl("mstdn.jsonl"):
+    t = r["text"]
+    if (ACT.search(t) and not FICT.search(t)) or tag_of(t): add("Mastodon", r["time_jst"], r["url"], "@" + r["acct"], t)
 for r in jl("nostr.jsonl"):
     t = r["text"]
     if (ACT.search(t) and not FICT.search(t)) or tag_of(t): add("Nostr", r["time_jst"], r["url"], r["pubkey"][:12], t)
@@ -123,7 +131,7 @@ def last(logname, pat):
     m = re.findall(pat, open(p, encoding="utf-8").read())
     return int(m[-1]) if m else 0
 stats = {"hours": HOURS, "elapsed_sec": int(time.time() - t0),
-         "x_posts": len(yahoo), "misskey_notes": len(jl("misskey.jsonl")), "nico_videos": len(jl("nico.jsonl")), "yt_comments": len(jl("yt.jsonl")), "nostr_notes": len(jl("nostr.jsonl")),
+         "x_posts": len(yahoo), "misskey_notes": len(jl("misskey.jsonl")), "nico_videos": len(jl("nico.jsonl")), "yt_comments": len(jl("yt.jsonl")), "nostr_notes": len(jl("nostr.jsonl")), "anond_entries": len(jl("anond.jsonl")), "mastodon_statuses": len(jl("mstdn.jsonl")),
          "fivech_responses": sum(last(f"5ch{i}.log", r"24h内レス=(\d+)") for i in range(3)),
          "fivech_hits": len(fivech), "boards": len(boards), "candidates": len(cands), "focus": sum(1 for c in cands if c.get("tag")), "deepdive": sum(1 for c in cands if c.get("context"))}
 json.dump({"stats": stats, "candidates": cands[:50]}, open(os.path.join(OUT, "candidates.json"), "w"), ensure_ascii=False)
