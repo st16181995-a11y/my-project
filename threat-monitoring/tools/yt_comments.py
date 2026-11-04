@@ -1,4 +1,5 @@
-"""YouTube Data API v3 で、検索語ごとに直近7日の動画を探し、その動画の直近N時間のコメントを集める。
+"""YouTube Data API v3 で、検索語ごとに直近7日の動画を探し、直近N時間に公開された動画（タイトル・説明）と、その動画の直近N時間のコメントを集める。
+検索語は1行に「A|B|C」とまとめると1回の検索（100単位）で済む。
 使い方: python3 -I yt_comments.py queries.txt out.jsonl [hours=24]
 キーは環境変数 YOUTUBE_API_KEY から読む（チャットやファイルには書かない）。
 使用量の目安: 検索1回=100単位、コメント取得1回=1単位（無料枠 1日10,000単位）。"""
@@ -8,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 JST = timezone(timedelta(hours=9))
 API = "https://www.googleapis.com/youtube/v3/"
 KEY = os.environ.get("YOUTUBE_API_KEY", "")
-MAX_VIDEOS = 60
+MAX_VIDEOS = 120
 
 
 def call(path, **params):
@@ -35,7 +36,7 @@ def main():
     videos = {}
     for q in [l.strip() for l in open(qfile, encoding="utf-8") if l.strip() and not l.startswith("#")]:
         try:
-            d = call("search", part="snippet", q=q, type="video", order="date", maxResults=15,
+            d = call("search", part="snippet", q=q, type="video", order="date", maxResults=25,
                      publishedAfter=after, regionCode="JP", relevanceLanguage="ja")
         except Exception as e:
             print(f"ERR search {q}: {e}", file=sys.stderr)
@@ -43,9 +44,19 @@ def main():
             continue
         for it in d.get("items", []):
             vid = it["id"]["videoId"]
-            videos.setdefault(vid, {"title": it["snippet"]["title"], "channel": it["snippet"]["channelTitle"], "queries": []})["queries"].append(q)
+            sn = it["snippet"]
+            videos.setdefault(vid, {"title": sn["title"], "channel": sn["channelTitle"], "desc": sn.get("description", ""),
+                                    "published": sn.get("publishedAt", ""), "queries": []})["queries"].append(q)
         print(f"{q}\t動画{len(d.get('items', []))}", file=sys.stderr)
     rows = []
+    # 動画そのもの（タイトル・説明）も、直近N時間に公開されたものは候補にする
+    for vid, v in videos.items():
+        if not v["published"]: continue
+        ts = datetime.fromisoformat(v["published"].replace("Z", "+00:00"))
+        if ts < cutoff: continue
+        rows.append({"time_jst": ts.astimezone(JST).strftime("%Y-%m-%d %H:%M"), "kind": "video",
+                     "url": f"https://www.youtube.com/watch?v={vid}", "author": v["channel"],
+                     "text": (v["title"] + " / " + v["desc"])[:300], "video": v["title"], "channel": v["channel"], "queries": v["queries"]})
     for vid, v in list(videos.items())[:MAX_VIDEOS]:
         try:
             d = call("commentThreads", part="snippet,replies", videoId=vid, order="time", maxResults=100, textFormat="plainText")
@@ -58,7 +69,7 @@ def main():
                 s = c["snippet"]
                 ts = datetime.fromisoformat(s["publishedAt"].replace("Z", "+00:00"))
                 if ts < cutoff: continue
-                rows.append({"time_jst": ts.astimezone(JST).strftime("%Y-%m-%d %H:%M"),
+                rows.append({"time_jst": ts.astimezone(JST).strftime("%Y-%m-%d %H:%M"), "kind": "comment",
                              "url": f"https://www.youtube.com/watch?v={vid}&lc={c['id']}",
                              "author": s.get("authorDisplayName", ""), "text": s.get("textDisplay", ""),
                              "video": v["title"], "channel": v["channel"], "queries": v["queries"]})

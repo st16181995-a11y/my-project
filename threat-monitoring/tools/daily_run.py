@@ -75,7 +75,7 @@ for r in jl("nico.jsonl"):
 for r in jl("yt.jsonl"):
     t = r["text"]
     if (ACT.search(t) and not FICT.search(t)) or tag_of(t):
-        add("YouTube", r["time_jst"], r["url"], r["author"], t, {"video": r["video"][:60]})
+        add("YouTube" + ("動画" if r.get("kind") == "video" else ""), r["time_jst"], r["url"], r["author"], t, {"video": r["video"][:60]})
 cands.sort(key=lambda c: -c["score"])
 
 # ---- 深掘り: 気になる候補ごとに、同じアカウントの直近1週間／同じスレの前後を集める ----
