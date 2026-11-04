@@ -231,6 +231,9 @@ function render(){
     });
   }
   if(r.focusNote){var fc=el('div','card');fc.appendChild(el('div','why','重点監視（育樹祭・秋篠宮・ペットボトル爆破）: '+r.focusNote));body.appendChild(fc)}
+  if(Array.isArray(r.going)&&r.going.length){var gd=el('div','card');gd.appendChild(el('div','why','育樹祭・来訪先に「行く」と書いた投稿（攻撃性は問わない・'+r.going.length+'件）'));
+    r.going.forEach(function(g){var c=el('div','quote',[g.time,g.account].filter(Boolean).join(' ')+'：'+(g.text||''));gd.appendChild(c);var u=safeUrl(g.url);if(u){var r3=el('div','row');var a=el('a','btn','開く');a.href=u;a.target='_blank';a.rel='noopener';r3.appendChild(a);gd.appendChild(r3)}});
+    body.appendChild(gd)}
   section('緊急確認推奨',urgent,body);
   section('重点監視',focus,body);
   section('前回から変化',changed,body);

@@ -90,6 +90,21 @@ for r in jl("yt.jsonl"):
         add("YouTube" + ("動画" if r.get("kind") == "video" else ""), r["time_jst"], r["url"], r["author"], t, {"video": r["video"][:60]})
 cands.sort(key=lambda c: -c["score"])
 
+# ---- 育樹祭・来訪先に「行く」と書いた投稿（攻撃性は問わず全件列挙）----
+GOPLACE = re.compile(r"育樹祭|植樹祭|新庄総合公園|白浜会館|上富田|旧南紀白浜空港|(秋篠宮|皇嗣|紀子).{0,30}(和歌山|白浜|田辺|美浜|みなべ)|(和歌山|白浜|田辺|美浜|みなべ).{0,30}(秋篠宮|皇嗣|紀子|奉迎)")
+GOVERB = re.compile(r"行く|行きます|行って|行こう|向かう|向かい|参加|出席|参列|奉迎|お出迎え|沿道|お邪魔|出展|出演|見に|会いに|楽しみ|当日|到着|現地|デモ|抗議")
+going, gseen = [], set()
+def addgo(src, time_jst, url, who, text):
+    if url in gseen: return
+    if GOPLACE.search(text) and GOVERB.search(text) and not re.search(r"松本地区|あましん|尼崎|飯田市|筑北|高知県で「全国植樹祭」", text):
+        gseen.add(url); going.append({"source": src, "time": time_jst, "url": url, "account": who, "text": text[:200]})
+for r in yahoo: addgo("X", r["time_jst"], (r.get("url") or "").split("?")[0], "@" + (r.get("screenName") or ""), (r.get("text") or "").replace("\tSTART\t", "").replace("\tEND\t", ""))
+for r in fivech: addgo("5ch", r["time_jst"], r["url"], r["board"], r["text"])
+for r in jl("misskey.jsonl"): addgo("Misskey", r["time_jst"], r["url"], "@" + r["user"], r["text"])
+for r in jl("mstdn.jsonl"): addgo("Mastodon", r["time_jst"], r["url"], "@" + r["acct"], r["text"])
+for r in jl("anond.jsonl"): addgo("はてな匿名", r["time_jst"], r["url"], "", r["text"])
+for r in jl("yt.jsonl"): addgo("YouTube", r["time_jst"], r["url"], r["author"], r["text"])
+
 # ---- 深掘り: 気になる候補ごとに、同じアカウントの直近1週間／同じスレの前後を集める ----
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -134,5 +149,6 @@ stats = {"hours": HOURS, "elapsed_sec": int(time.time() - t0),
          "x_posts": len(yahoo), "misskey_notes": len(jl("misskey.jsonl")), "nico_videos": len(jl("nico.jsonl")), "yt_comments": len(jl("yt.jsonl")), "nostr_notes": len(jl("nostr.jsonl")), "anond_entries": len(jl("anond.jsonl")), "mastodon_statuses": len(jl("mstdn.jsonl")),
          "fivech_responses": sum(last(f"5ch{i}.log", r"24h内レス=(\d+)") for i in range(3)),
          "fivech_hits": len(fivech), "boards": len(boards), "candidates": len(cands), "focus": sum(1 for c in cands if c.get("tag")), "deepdive": sum(1 for c in cands if c.get("context"))}
-json.dump({"stats": stats, "candidates": cands[:50]}, open(os.path.join(OUT, "candidates.json"), "w"), ensure_ascii=False)
+stats["going"] = len(going)
+json.dump({"stats": stats, "candidates": cands[:50], "going": going[:60]}, open(os.path.join(OUT, "candidates.json"), "w"), ensure_ascii=False)
 print(json.dumps(stats, ensure_ascii=False))
