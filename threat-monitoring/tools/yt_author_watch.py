@@ -1,12 +1,11 @@
 """YouTube：指定したチャンネル（投稿者）のコメントを、書き込み先チャンネルの最近の動画と、皇室・育樹祭関連の新着動画から探す。
-使い方: python3 -I yt_author_watch.py out.json AUTHOR_CHANNEL_ID [HOST_CHANNEL_ID,...] [days=21]
+使い方: python3 -I yt_author_watch.py out.json AUTHOR_CHANNEL_ID [HOST_CHANNEL_ID,...] [days=21] [max_queries=6]
 キーは環境変数 YOUTUBE_API_KEY。使用量の目安：検索6回×100＋動画数×1〜5単位。"""
 import json, os, sys, urllib.parse, urllib.request
 from datetime import datetime, timedelta, timezone
 
 K = os.environ.get("YOUTUBE_API_KEY", "")
-QS = ["秋篠宮|紀子さま|紀子様|キーコ", "悠仁さま|佳子さま|皇嗣", "天皇陛下|愛子さま|敬宮|皇室",
-      "育樹祭|植樹祭|和歌山 秋篠宮|白浜 秋篠宮|田辺 秋篠宮", "秋篠宮家 炎上|紀子さま 波紋|皇室 衝撃", "天皇ご一家|両陛下|雅子さま|美智子さま"]
+QS = ["秋篠宮|紀子さま|紀子様|キーコ", "育樹祭|植樹祭|和歌山 秋篠宮|白浜 秋篠宮|田辺 秋篠宮", "悠仁さま|佳子さま|皇嗣", "天皇陛下|愛子さま|敬宮|皇室", "秋篠宮家 炎上|紀子さま 波紋|皇室 衝撃", "天皇ご一家|両陛下|雅子さま|美智子さま"]
 
 
 def call(p, **q):
@@ -18,6 +17,7 @@ def main():
     out, author = sys.argv[1], sys.argv[2]
     hosts = [h for h in (sys.argv[3].split(",") if len(sys.argv) > 3 else []) if h]
     days = int(sys.argv[4]) if len(sys.argv) > 4 else 21
+    qmax = int(sys.argv[5]) if len(sys.argv) > 5 else len(QS)
     if not K:
         json.dump({"error": "YOUTUBE_API_KEY なし"}, open(out, "w"), ensure_ascii=False); return
     after = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -34,7 +34,7 @@ def main():
                     vids[it["snippet"]["resourceId"]["videoId"]] = it["snippet"]["title"]
             tok = d.get("nextPageToken")
             if not tok: break
-    for qq in QS:
+    for qq in QS[:qmax]:
         try:
             d = call("search", part="snippet", q=qq, type="video", order="date", maxResults=50, publishedAfter=after, regionCode="JP", relevanceLanguage="ja")
             for it in d.get("items", []): vids.setdefault(it["id"]["videoId"], it["snippet"]["title"])
