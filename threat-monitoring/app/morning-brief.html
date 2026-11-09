@@ -62,6 +62,7 @@ h2 .n{font-weight:500;color:var(--muted);font-size:13px}
 .chips{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}
 .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .btn{border:1px solid var(--line);background:var(--surface);color:var(--accent);border-radius:8px;padding:6px 12px;font:inherit;font-size:13px;font-weight:700;text-decoration:none;min-height:36px;display:inline-flex;align-items:center;cursor:pointer}
+.btn.okd{background:var(--lo-bg);color:var(--ok);border-color:transparent}
 .btn:focus-visible,.chip:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 button.chip{font:inherit;font-size:12.5px;min-height:32px;cursor:pointer;padding:0 11px}
 .days{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px}
@@ -97,7 +98,36 @@ ul.plain{margin:0;padding-left:20px;font-size:13.5px} ul.plain li{margin:2px 0}
 var $=function(s){return document.querySelector(s)};
 function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
 var LV={'高':'hi','中':'mid','低':'lo'};
-var reports=[],selDate=null,dbOK=true,watch=null;
+var reports=[],selDate=null,dbOK=true,watch=null,DB=null,acks={},showAcked=false;
+var RANK={'低':0,'中':1,'高':2};
+/* 確認OK（✔）の記録：アカウントごとに1件。翌日以降は、変化がない限り表示しない */
+function ackKey(it){var s=String(it.account||it.url||it.text||'').trim();var h=0;for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0}return 'k'+(h>>>0).toString(16)+'_'+s.replace(/[^A-Za-z0-9_]/g,'').slice(0,40)}
+function escalated(it,a){
+  if(RANK[it.level]>RANK[a.level])return true;
+  if(it.urgent&&!a.urgent)return true;
+  if(it.status==='変化あり')return true;
+  return false;
+}
+function ackState(it,r){
+  var a=acks[ackKey(it)];
+  if(!a)return {acked:false};
+  if(r.date<=a.date)return {acked:true,hide:false,same:true,a:a};
+  if(escalated(it,a))return {acked:true,hide:false,changed:true,a:a};
+  return {acked:true,hide:true,a:a};
+}
+function setAck(it,r,on){
+  if(!DB){toast('保存できません（サインインが必要です）');return}
+  var ref=DB.doc('acks/'+ackKey(it));
+  var p=on?ref.set({account:it.account||'',url:it.url||'',level:it.level||'低',urgent:!!it.urgent,date:r.date,ackedAt:jstToday(),text:String(it.text||'').slice(0,120)}):ref.delete();
+  p.then(function(){toast(on?'確認OKにしました（翌日から、変化がなければ表示しません）':'確認OKを取り消しました')},function(){toast('保存できませんでした')});
+}
+function itemText(it){return [it.account||'',it.platform+' '+(it.time||''),it.text||'',it.url||''].filter(Boolean).join('\n')}
+function reportText(r,items){
+  var L=[r.date+' 朝の脅威監視'+(r.generatedAt?'（'+r.generatedAt+'）':''),r.headline||'',r.summary||''];
+  if(r.focusNote)L.push('重点: '+r.focusNote);
+  items.forEach(function(it,i){L.push('');L.push((i+1)+'. 【'+(it.level||'')+(it.urgent?'・緊急':'')+'】'+(it.status||'')+' '+(it.account||''));L.push((it.platform||'')+' '+(it.time||''));if(it.text)L.push('「'+it.text+'」');if(it.why)L.push('理由: '+it.why);if(it.url)L.push(it.url)});
+  return L.join('\n');
+}
 
 function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(function(){t.hidden=true},1600)}
 function copy(text){
@@ -111,13 +141,15 @@ function jstToday(){var d=new Date(Date.now()+9*3600*1000);return d.toISOString(
 function safeUrl(u){return /^https?:\/\//.test(String(u||''))?u:null}
 function num(n){return typeof n==='number'?n.toLocaleString('ja-JP'):'—'}
 
-function section(title,items,parent){
+function section(title,items,parent,r){
   if(!items.length)return;
   var h=el('h2',null,title);h.appendChild(el('span','n',items.length+'件'));parent.appendChild(h);
-  items.forEach(function(it){parent.appendChild(card(it))});
+  items.forEach(function(it){parent.appendChild(card(it,r))});
 }
-function card(it){
+function card(it,rp){
   var c=el('div','card');
+  var as=rp?ackState(it,rp):{acked:false};
+  if(as.changed){c.appendChild(el('div','diff','✔ 確認済み（'+as.a.date+'）から変化がありました。もう一度確認してください。'))}
   var m=el('div','meta');
   var lv=el('span','pill '+(LV[it.level]||'lo'),it.level||'低');m.appendChild(lv);
   m.appendChild(el('span','chip','確度'+(it.grade||'D')));
@@ -154,9 +186,20 @@ function card(it){
   var r=el('div','row');
   var u=safeUrl(it.url);
   if(u){var a=el('a','btn','投稿を開く');a.href=u;a.target='_blank';a.rel='noopener';r.appendChild(a)}
+  var cb=el('button','btn','文章をコピー');cb.type='button';
+  cb.onclick=function(){copy(itemText(it))};
+  r.appendChild(cb);
   var cp=el('button','btn','評価をコピー');cp.type='button';
   cp.onclick=function(){copy(['【'+(it.status||'')+'】危険度'+it.level+' / 確度'+(it.grade||''),it.platform+' '+(it.time||''),it.account||'',it.url||'','「'+(it.text||'')+'」','指標: '+((it.indicators||[]).join('、')||'確認できず'),'根拠: '+(it.why||'')].join('\n'))};
-  r.appendChild(cp);c.appendChild(r);
+  r.appendChild(cp);
+  if(rp){
+    var on=as.acked&&!as.changed;
+    var ok=el('button','btn'+(on?' okd':''),on?'✔ 確認OK済み（取り消す）':'✔ 確認OK');ok.type='button';
+    ok.setAttribute('aria-pressed',on?'true':'false');
+    ok.onclick=function(){setAck(it,rp,!on)};
+    r.appendChild(ok);
+  }
+  c.appendChild(r);
   return c;
 }
 function listCard(title,arr){
@@ -174,7 +217,9 @@ function render(){
   var st=$('#stale');
   if(latest!==td){st.hidden=false;st.textContent='今日（'+td+'）の調査結果はまだ反映されていません。最新は '+latest+' です。'}else st.hidden=true;
 
-  var items=(r.items||[]).slice();
+  var allItems=(r.items||[]).slice();
+  var hiddenAck=allItems.filter(function(i){return ackState(i,r).hide});
+  var items=allItems.filter(function(i){return !ackState(i,r).hide});
   var urgent=items.filter(function(i){return i.urgent});
   var rest0=items.filter(function(i){return !i.urgent});
   var focus=rest0.filter(function(i){return i.tag});
@@ -195,6 +240,9 @@ function render(){
   hero.appendChild(big);
   hero.appendChild(el('p',null,r.summary||'見つからなかったことは、脅威がないことの証明ではありません。'));
   body.appendChild(hero);
+  var tr=el('div','row');var ca=el('button','btn','レポート全体をコピー');ca.type='button';ca.onclick=function(){copy(reportText(r,allItems))};tr.appendChild(ca);
+  if(hiddenAck.length)tr.appendChild(el('span','cov','✔ 確認OK済みで変化のない案件 '+hiddenAck.length+' 件は、下にたたんであります'));
+  body.appendChild(tr);
 
   var s=r.stats||{};
   var stats=el('div','stats');
@@ -230,16 +278,22 @@ function render(){
       body.appendChild(d);
     });
   }
-  if(r.focusNote){var fc=el('div','card');fc.appendChild(el('div','why','重点監視（育樹祭・秋篠宮・ペットボトル爆破）: '+r.focusNote));body.appendChild(fc)}
+  if(r.focusNote){var fc=el('div','card');fc.appendChild(el('div','why','重点監視: '+r.focusNote));body.appendChild(fc)}
   if(Array.isArray(r.going)&&r.going.length){var gd=el('div','card');gd.appendChild(el('div','why','育樹祭・来訪先に「行く」と書いた投稿（攻撃性は問わない・'+r.going.length+'件）'));
     r.going.forEach(function(g){var c=el('div','quote',[g.time,g.account].filter(Boolean).join(' ')+'：'+(g.text||''));gd.appendChild(c);var u=safeUrl(g.url);if(u){var r3=el('div','row');var a=el('a','btn','開く');a.href=u;a.target='_blank';a.rel='noopener';r3.appendChild(a);gd.appendChild(r3)}});
     body.appendChild(gd)}
-  section('緊急確認推奨',urgent,body);
-  section('重点監視',focus,body);
-  section('前回から変化',changed,body);
-  section('新規',fresh,body);
-  section('継続監視',cont,body);
-  if(!items.length)body.appendChild(el('p','empty','記録する案件はありませんでした。'));
+  section('緊急確認推奨',urgent,body,r);
+  section('重点監視',focus,body,r);
+  section('前回から変化',changed,body,r);
+  section('新規',fresh,body,r);
+  section('継続監視',cont,body,r);
+  if(!items.length)body.appendChild(el('p','empty',hiddenAck.length?'確認OK済みの案件以外に、表示する案件はありませんでした。':'記録する案件はありませんでした。'));
+  if(hiddenAck.length){
+    var dk=el('details');dk.appendChild(el('summary',null,'✔ 確認OK済み・変化なし（'+hiddenAck.length+'件）'));
+    dk.appendChild(el('div','cov','状況は把握済みとして、たたんでいます。調査は続けていて、新しい危険な投稿や危険度の上昇があれば、自動でまた上に表示されます。'));
+    hiddenAck.forEach(function(it){dk.appendChild(card(it,r))});
+    body.appendChild(dk);
+  }
 
   var h=el('h2',null,'今日の調査範囲');body.appendChild(h);
   var cols=el('div','cols');
@@ -260,6 +314,8 @@ function renderDays(){
   });
 }
 function start(db){
+  DB=db;
+  db.collection('acks').onSnapshot(function(snap){acks={};snap.docs.forEach(function(d){acks[d.id]=d.data()});render()},function(){});
   db.doc('watchlist/current').onSnapshot(function(s){watch=s.exists?s.data():null;render()},function(){});
   db.collection('reports').orderBy('date','desc').limit(30).onSnapshot(function(snap){
     reports=snap.docs.map(function(d){return d.data()}).filter(function(x){return x&&x.date});
