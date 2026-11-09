@@ -40,13 +40,14 @@ TIME = re.compile(r"明日|今日|今夜|今晩|週末|来週|\d{1,2}月\d{1,2}�
 NEWS = re.compile(r"容疑者|逮捕|報道によ|記事|asahi\.5ch|ソース|被告|判決")
 FICT = re.compile(r"ゲーム|実況|配信|アニメ|漫画|映画|ドラマ|小説|キャラ|ボス|ガチャ|推し|ｗｗ|www|草|笑|ネタ|冗談|殺す気か|殺す気で|飯テロ|プロセス")
 
-FOCUS = re.compile(r"育樹祭|秋篠宮|皇嗣|悠仁|天皇(?!賞)|皇室|皇族|皇后|皇居|宮内庁|新庄総合公園|白浜会館|南紀の台|紀伊田辺|南紀白浜|白浜|田辺市|上富田|白良浜|旧南紀白浜空港|美浜町|みなべ|上富田|来訪反対|奉迎|A宮|Ａ宮|アキシノ|秋家|秋夫妻|キーコ|鬼子|皿婆|川嶋紀子|川島紀子|狡仁|誅殺")
-PET = re.compile(r"ペットボトル.{0,30}(爆破|爆弾|爆発)|(爆破|爆弾|爆発).{0,30}ペットボトル")
+FOCUS = re.compile(r"秋篠宮|皇嗣|悠仁|天皇(?!賞)|皇室|皇族|皇后|皇居|宮内庁|A宮|Ａ宮|アキシノ|秋家|秋夫妻|キーコ|鬼子|皿婆|川嶋紀子|川島紀子|狡仁|誅殺")
+PET = re.compile(r"(?!x)x")  # 育樹祭が終わったため外した
+MASS = re.compile(r"無差別|通り魔|大量殺傷|拡大自殺|無敵の人|誰でもよかった|次は俺|俺もやる|真似|模倣|続く人|英雄|称賛|賞賛|死刑になりたい|道連れ|社会全体|社会に恨み|社会に復讐")
 APPR = re.compile(r"待ち伏せ|出待ち|乗り込|突撃|会いに行|直接行|襲|殺|爆|刺|燃|放火|やってやる|天誅|決行")
 
 def tag_of(t):
-    if PET.search(t): return "重点：ペットボトル爆破"
-    if FOCUS.search(t) and (ACT.search(t) or INTENT.search(t) or APPR.search(t)): return "重点：育樹祭・秋篠宮"
+    if MASS.search(t) and (ACT.search(t) or INTENT.search(t) or APPR.search(t)) and not FICT.search(t) and not NEWS.search(t): return "重点：無差別・模倣"
+    if FOCUS.search(t) and (ACT.search(t) or INTENT.search(t) or APPR.search(t)): return "重点：皇室"
     return ""
 
 def score(t):
@@ -89,21 +90,6 @@ for r in jl("yt.jsonl"):
     if (ACT.search(t) and not FICT.search(t)) or tag_of(t):
         add("YouTube" + ("動画" if r.get("kind") == "video" else ""), r["time_jst"], r["url"], r["author"], t, {"video": r["video"][:60]})
 cands.sort(key=lambda c: -c["score"])
-
-# ---- 育樹祭・来訪先に「行く」と書いた投稿（攻撃性は問わず全件列挙）----
-GOPLACE = re.compile(r"全国育樹祭|第49回|育樹祭.{0,40}(和歌山|わかやま|白浜|田辺)|(和歌山|わかやま|白浜|田辺).{0,40}育樹祭|植樹祭.{0,30}(和歌山|白浜|田辺)|新庄総合公園|白浜会館|旧南紀白浜空港|(秋篠宮|皇嗣|紀子).{0,30}(和歌山|白浜|田辺|上富田|美浜|みなべ)|(和歌山|白浜|田辺|上富田|美浜|みなべ).{0,30}(秋篠宮|皇嗣|紀子|奉迎)")
-GOVERB = re.compile(r"行く|予定|活動|出番|披露|ブース|行きます|行って|行こう|向かう|向かい|参加|出席|参列|奉迎|お出迎え|沿道|お邪魔|出展|出演|見に|会いに|楽しみ|当日|到着|現地|デモ|抗議")
-going, gseen = [], set()
-def addgo(src, time_jst, url, who, text):
-    if url in gseen: return
-    if GOPLACE.search(text) and GOVERB.search(text) and not re.search(r"松本地区|あましん|尼崎|飯田市|筑北|高知県で「全国植樹祭」", text):
-        gseen.add(url); going.append({"source": src, "time": time_jst, "url": url, "account": who, "text": text[:200]})
-for r in yahoo: addgo("X", r["time_jst"], (r.get("url") or "").split("?")[0], "@" + (r.get("screenName") or ""), (r.get("text") or "").replace("\tSTART\t", "").replace("\tEND\t", ""))
-for r in fivech: addgo("5ch", r["time_jst"], r["url"], r["board"], r["text"])
-for r in jl("misskey.jsonl"): addgo("Misskey", r["time_jst"], r["url"], "@" + r["user"], r["text"])
-for r in jl("mstdn.jsonl"): addgo("Mastodon", r["time_jst"], r["url"], "@" + r["acct"], r["text"])
-for r in jl("anond.jsonl"): addgo("はてな匿名", r["time_jst"], r["url"], "", r["text"])
-for r in jl("yt.jsonl"): addgo("YouTube", r["time_jst"], r["url"], r["author"], r["text"])
 
 # ---- 深掘り: 気になる候補ごとに、同じアカウントの直近1週間／同じスレの前後を集める ----
 import urllib.request
@@ -149,6 +135,5 @@ stats = {"hours": HOURS, "elapsed_sec": int(time.time() - t0),
          "x_posts": len(yahoo), "misskey_notes": len(jl("misskey.jsonl")), "nico_videos": len(jl("nico.jsonl")), "yt_comments": len(jl("yt.jsonl")), "nostr_notes": len(jl("nostr.jsonl")), "anond_entries": len(jl("anond.jsonl")), "mastodon_statuses": len(jl("mstdn.jsonl")),
          "fivech_responses": sum(last(f"5ch{i}.log", r"24h内レス=(\d+)") for i in range(3)),
          "fivech_hits": len(fivech), "boards": len(boards), "candidates": len(cands), "focus": sum(1 for c in cands if c.get("tag")), "deepdive": sum(1 for c in cands if c.get("context"))}
-stats["going"] = len(going)
-json.dump({"stats": stats, "candidates": cands[:50], "going": going[:60]}, open(os.path.join(OUT, "candidates.json"), "w"), ensure_ascii=False)
+json.dump({"stats": stats, "candidates": cands[:50]}, open(os.path.join(OUT, "candidates.json"), "w"), ensure_ascii=False)
 print(json.dumps(stats, ensure_ascii=False))
