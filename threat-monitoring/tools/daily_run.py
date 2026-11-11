@@ -42,10 +42,12 @@ FICT = re.compile(r"ゲーム|実況|配信|アニメ|漫画|映画|ドラマ|�
 
 FOCUS = re.compile(r"秋篠宮|皇嗣|悠仁|天皇(?!賞)|皇室|皇族|皇后|皇居|宮内庁|A宮|Ａ宮|アキシノ|秋家|秋夫妻|キーコ|鬼子|皿婆|川嶋紀子|川島紀子|狡仁|誅殺")
 PET = re.compile(r"(?!x)x")  # 育樹祭が終わったため外した
+KOB = re.compile(r"小林鷹之|小林 鷹之|小林鷹|コバホーク|こばほーく|小林議員")
 MASS = re.compile(r"無差別|通り魔|大量殺傷|拡大自殺|無敵の人|誰でもよかった|次は俺|俺もやる|真似|模倣|続く人|英雄|称賛|賞賛|死刑になりたい|道連れ|社会全体|社会に恨み|社会に復讐")
 APPR = re.compile(r"待ち伏せ|出待ち|乗り込|突撃|会いに行|直接行|襲|殺|爆|刺|燃|放火|やってやる|天誅|決行")
 
 def tag_of(t):
+    if KOB.search(t) and (ACT.search(t) or INTENT.search(t) or APPR.search(t)): return "重点：小林鷹之議員"
     if MASS.search(t) and (ACT.search(t) or INTENT.search(t) or APPR.search(t)) and not FICT.search(t) and not NEWS.search(t): return "重点：無差別・模倣"
     if FOCUS.search(t) and (ACT.search(t) or INTENT.search(t) or APPR.search(t)): return "重点：皇室"
     return ""

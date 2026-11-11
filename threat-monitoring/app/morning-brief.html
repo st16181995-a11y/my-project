@@ -121,6 +121,31 @@ function setAck(it,r,on){
   var p=on?ref.set({account:it.account||'',url:it.url||'',level:it.level||'低',urgent:!!it.urgent,date:r.date,ackedAt:jstToday(),text:String(it.text||'').slice(0,120)}):ref.delete();
   p.then(function(){toast(on?'確認OKにしました（翌日から、変化がなければ表示しません）':'確認OKを取り消しました')},function(){toast('保存できませんでした')});
 }
+/* 注目リストの確認OK（☑）：一覧から外すだけで、監視は続ける */
+function wKey(w){var s=String((w.platform||'')+'|'+(w.url||'')+'|'+(w.title||'')).trim();var h=0;for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0}return 'w'+(h>>>0).toString(16)}
+function setWatchAck(w,on){
+  if(!DB){toast('保存できません（サインインが必要です）');return}
+  var ref=DB.doc('acks/'+wKey(w));
+  var p=on?ref.set({kind:'watch',account:String(w.platform||''),url:w.url||'',level:w.level||'',date:jstToday(),ackedAt:jstToday(),text:String(w.title||'').slice(0,120)}):ref.delete();
+  p.then(function(){toast(on?'注目リストから外しました（監視は続けます）':'注目リストに戻しました')},function(){toast('保存できませんでした')});
+}
+function watchCard(w,hidden){
+  var c=el('div','card');var m=el('div','meta');
+  if(w.level)m.appendChild(el('span','pill '+(LV[w.level]||'lo'),w.level));
+  if(w.grade)m.appendChild(el('span','chip','確度'+w.grade));
+  if(w.state)m.appendChild(el('span','chip new',w.state));
+  m.appendChild(el('span',null,[w.platform,w.when].filter(Boolean).join(' ・ ')));
+  c.appendChild(m);
+  if(w.title)c.appendChild(el('div','why',w.title));
+  if(w.text)c.appendChild(el('div','quote',w.text));
+  if(w.note)c.appendChild(el('div','why',w.note));
+  var r2=el('div','row');var u=safeUrl(w.url);
+  if(u){var a=el('a','btn','開く');a.href=u;a.target='_blank';a.rel='noopener';r2.appendChild(a)}
+  var cb=el('button','btn','文章をコピー');cb.type='button';cb.onclick=function(){copy([w.platform||'',w.title||'',w.text||'',w.url||''].filter(Boolean).join('\n'))};r2.appendChild(cb);
+  var ok=el('button','btn'+(hidden?' okd':''),hidden?'☑ 確認OK済み（戻す）':'☑ 確認OK（一覧から外す）');ok.type='button';
+  ok.onclick=function(){setWatchAck(w,!hidden)};r2.appendChild(ok);
+  c.appendChild(r2);return c;
+}
 function itemText(it){return [it.account||'',it.platform+' '+(it.time||''),it.text||'',it.url||''].filter(Boolean).join('\n')}
 function reportText(r,items){
   var L=[r.date+' 朝の脅威監視'+(r.generatedAt?'（'+r.generatedAt+'）':''),r.headline||'',r.summary||''];
@@ -259,24 +284,21 @@ function render(){
   if(watch&&((watch.threats||[]).length||(watch.defamation||[]).length)){
     body.appendChild(el('h2',null,'注目リスト'));
     if(watch.updated)body.appendChild(el('p','cov','更新 '+watch.updated+(watch.note?'　'+watch.note:'')));
+    var wHidden=[];
     [['脅威として注意',watch.threats,true],['誹謗中傷がひどいアカウント（暴力の示唆なし）',watch.defamation,false]].forEach(function(g){
       if(!g[1]||!g[1].length)return;
-      var d=el('details');d.open=g[2];d.appendChild(el('summary',null,g[0]+'（'+g[1].length+'件）'));
-      g[1].forEach(function(w){
-        var c=el('div','card');var m=el('div','meta');
-        if(w.level)m.appendChild(el('span','pill '+(LV[w.level]||'lo'),w.level));
-        if(w.grade)m.appendChild(el('span','chip','確度'+w.grade));
-        if(w.state)m.appendChild(el('span','chip new',w.state));
-        m.appendChild(el('span',null,[w.platform,w.when].filter(Boolean).join(' ・ ')));
-        c.appendChild(m);
-        if(w.title)c.appendChild(el('div','why',w.title));
-        if(w.text)c.appendChild(el('div','quote',w.text));
-        if(w.note)c.appendChild(el('div','why',w.note));
-        var u=safeUrl(w.url);if(u){var r2=el('div','row');var a=el('a','btn','開く');a.href=u;a.target='_blank';a.rel='noopener';r2.appendChild(a);c.appendChild(r2)}
-        d.appendChild(c);
-      });
+      var shown=g[1].filter(function(w){var a=acks[wKey(w)];if(a){wHidden.push(w);return false}return true});
+      if(!shown.length)return;
+      var d=el('details');d.open=g[2];d.appendChild(el('summary',null,g[0]+'（'+shown.length+'件）'));
+      shown.forEach(function(w){d.appendChild(watchCard(w,false))});
       body.appendChild(d);
     });
+    if(wHidden.length){
+      var dh2=el('details');dh2.appendChild(el('summary',null,'☑ 確認OK済みの注目アカウント（'+wHidden.length+'件）'));
+      dh2.appendChild(el('div','cov','一覧からは外していますが、毎日の調査は続けています。危険な投稿が出れば、上の案件として表示されます。'));
+      wHidden.forEach(function(w){dh2.appendChild(watchCard(w,true))});
+      body.appendChild(dh2);
+    }
   }
   if(r.focusNote){var fc=el('div','card');fc.appendChild(el('div','why','重点監視: '+r.focusNote));body.appendChild(fc)}
   if(Array.isArray(r.going)&&r.going.length){var gd=el('div','card');gd.appendChild(el('div','why','育樹祭・来訪先に「行く」と書いた投稿（攻撃性は問わない・'+r.going.length+'件）'));
